@@ -38,10 +38,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-#include "base/bittorrent/infohash.h"
 #include "base/bittorrent/session.h"
 #include "base/bittorrent/torrent.h"
-#include "base/bittorrent/trackerentry.h"
 #include "base/global.h"
 #include "base/logger.h"
 #include "base/net/downloadmanager.h"
@@ -74,11 +72,14 @@ namespace
         return scheme;
     }
 
-    QString getHost(const QString &tracker)
+    QString getHost(const QString &url)
     {
         // We want the domain + tld. Subdomains should be disregarded
-        const QUrl url {tracker};
-        const QString host {url.host()};
+        // If failed to parse the domain or IP address, original input should be returned
+
+        const QString host = QUrl(url).host();
+        if (host.isEmpty())
+            return url;
 
         // host is in IP format
         if (!QHostAddress(host).isNull())
@@ -212,6 +213,9 @@ StatusFilterWidget::StatusFilterWidget(QWidget *parent, TransferListWidget *tran
     auto *stalledDownloading = new QListWidgetItem(this);
     stalledDownloading->setData(Qt::DisplayRole, tr("Stalled Downloading (0)"));
     stalledDownloading->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(QLatin1String("stalledDL")));
+    auto *checking = new QListWidgetItem(this);
+    checking->setData(Qt::DisplayRole, tr("Checking (0)"));
+    checking->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(QLatin1String("checking")));
     auto *errored = new QListWidgetItem(this);
     errored->setData(Qt::DisplayRole, tr("Errored (0)"));
     errored->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(QLatin1String("error")));
@@ -238,6 +242,7 @@ void StatusFilterWidget::updateTorrentNumbers()
     int nbStalled = 0;
     int nbStalledUploading = 0;
     int nbStalledDownloading = 0;
+    int nbChecking = 0;
     int nbErrored = 0;
 
     const QVector<BitTorrent::Torrent *> torrents = BitTorrent::Session::instance()->torrents();
@@ -261,6 +266,8 @@ void StatusFilterWidget::updateTorrentNumbers()
             ++nbStalledUploading;
         if (torrent->state() ==  BitTorrent::TorrentState::StalledDownloading)
             ++nbStalledDownloading;
+        if (torrent->isChecking())
+            ++nbChecking;
         if (torrent->isErrored())
             ++nbErrored;
     }
@@ -278,6 +285,7 @@ void StatusFilterWidget::updateTorrentNumbers()
     item(TorrentFilter::Stalled)->setData(Qt::DisplayRole, tr("Stalled (%1)").arg(nbStalled));
     item(TorrentFilter::StalledUploading)->setData(Qt::DisplayRole, tr("Stalled Uploading (%1)").arg(nbStalledUploading));
     item(TorrentFilter::StalledDownloading)->setData(Qt::DisplayRole, tr("Stalled Downloading (%1)").arg(nbStalledDownloading));
+    item(TorrentFilter::Checking)->setData(Qt::DisplayRole, tr("Checking (%1)").arg(nbChecking));
     item(TorrentFilter::Errored)->setData(Qt::DisplayRole, tr("Errored (%1)").arg(nbErrored));
 }
 
@@ -383,10 +391,8 @@ void TrackerFiltersList::addItem(const QString &tracker, const BitTorrent::Torre
 void TrackerFiltersList::removeItem(const QString &tracker, const BitTorrent::TorrentID &id)
 {
     const QString host = getHost(tracker);
-    QSet<BitTorrent::TorrentID> torrentIDs = m_trackers.value(host);
 
-    if (torrentIDs.empty())
-        return;
+    QSet<BitTorrent::TorrentID> torrentIDs = m_trackers.value(host);
     torrentIDs.remove(id);
 
     int row = 0;

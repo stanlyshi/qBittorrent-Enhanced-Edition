@@ -39,7 +39,6 @@ class QCompleter;
 class QContextMenuEvent;
 class QFileSystemModel;
 class QKeyEvent;
-class QStringRef;
 
 namespace Private
 {
@@ -82,10 +81,10 @@ namespace Private
         QString lastTestedPath() const;
 
     private:
-        QValidator::State validate(const QString &path, const QVector<QStringRef> &pathComponents, bool strict,
+        QValidator::State validate(const QList<QStringView> &pathComponents, bool strict,
                                    int firstComponentToTest, int lastComponentToTest) const;
 
-        TestResult testPath(const QStringRef &path, bool pathIsComplete) const;
+        TestResult testPath(QStringView path, bool pathIsComplete) const;
 
         bool m_strictMode;
         bool m_existingOnly;
@@ -106,13 +105,15 @@ namespace Private
         virtual void setFilenameFilters(const QStringList &filters) = 0;
         virtual void setBrowseAction(QAction *action) = 0;
         virtual void setValidator(QValidator *validator) = 0;
+        virtual QString placeholder() const = 0;
+        virtual void setPlaceholder(const QString &val) = 0;
         virtual QWidget *widget() = 0;
     };
 
     class FileLineEdit final : public QLineEdit, public FileEditorWithCompletion
     {
         Q_OBJECT
-        Q_DISABLE_COPY(FileLineEdit)
+        Q_DISABLE_COPY_MOVE(FileLineEdit)
 
     public:
         FileLineEdit(QWidget *parent = nullptr);
@@ -122,6 +123,8 @@ namespace Private
         void setFilenameFilters(const QStringList &filters) override;
         void setBrowseAction(QAction *action) override;
         void setValidator(QValidator *validator) override;
+        QString placeholder() const override;
+        void setPlaceholder(const QString &val) override;
         QWidget *widget() override;
 
     protected:
@@ -150,6 +153,8 @@ namespace Private
         void setFilenameFilters(const QStringList &filters) override;
         void setBrowseAction(QAction *action) override;
         void setValidator(QValidator *validator) override;
+        QString placeholder() const override;
+        void setPlaceholder(const QString &val) override;
         QWidget *widget() override;
 
     protected:

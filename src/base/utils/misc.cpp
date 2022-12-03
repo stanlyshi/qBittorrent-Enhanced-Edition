@@ -31,6 +31,8 @@
 #include <optional>
 
 #ifdef Q_OS_WIN
+#include <memory>
+
 #include <windows.h>
 #include <powrprof.h>
 #include <Shlobj.h>
@@ -133,18 +135,18 @@ void Utils::Misc::shutdownComputer(const ShutdownDialogAction &action)
 
     if (action == ShutdownDialogAction::Suspend)
     {
-        ::SetSuspendState(false, false, false);
+        ::SetSuspendState(FALSE, FALSE, FALSE);
     }
     else if (action == ShutdownDialogAction::Hibernate)
     {
-        ::SetSuspendState(true, false, false);
+        ::SetSuspendState(TRUE, FALSE, FALSE);
     }
     else
     {
         const QString msg = QCoreApplication::translate("misc", "qBittorrent will shutdown the computer now because all downloads are complete.");
         auto msgWchar = std::make_unique<wchar_t[]>(msg.length() + 1);
         msg.toWCharArray(msgWchar.get());
-        ::InitiateSystemShutdownW(nullptr, msgWchar.get(), 10, true, false);
+        ::InitiateSystemShutdownW(nullptr, msgWchar.get(), 10, TRUE, FALSE);
     }
 
     // Disable shutdown privilege.
@@ -393,7 +395,7 @@ QString Utils::Misc::getUserIDString()
     const int UNLEN = 256;
     WCHAR buffer[UNLEN + 1] = {0};
     DWORD buffer_len = sizeof(buffer) / sizeof(*buffer);
-    if (GetUserNameW(buffer, &buffer_len))
+    if (::GetUserNameW(buffer, &buffer_len))
         uid = QString::fromWCharArray(buffer);
 #else
     uid = QString::number(getuid());
@@ -498,7 +500,7 @@ QString Utils::Misc::opensslVersionString()
 #else
     static const auto version {QString::fromLatin1(SSLeay_version(SSLEAY_VERSION))};
 #endif
-    return version.splitRef(' ', Qt::SkipEmptyParts)[1].toString();
+    return QStringView(version).split(u' ', Qt::SkipEmptyParts).at(1).toString();
 }
 
 QString Utils::Misc::zlibVersionString()

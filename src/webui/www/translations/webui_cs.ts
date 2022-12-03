@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS language="cs" version="2.1">
+<TS version="2.1" language="cs">
 <context>
     <name>AboutDlg</name>
     <message>
@@ -144,10 +144,6 @@
         <translation>Nelze uložit nastavení programu, qBittorrent klient je pravděpodobně nedostupný.</translation>
     </message>
     <message>
-        <source>IRC: #qbittorrent on Freenode</source>
-        <translation>IRC: #qbittorrent na Freenode</translation>
-    </message>
-    <message>
         <source>Unknown</source>
         <translation>Neznámý</translation>
     </message>
@@ -158,10 +154,6 @@
     <message>
         <source>Seeding time limit must be between 0 and 525600 minutes.</source>
         <translation>Doba seedování musí být v rozsahu od 0 do 525600 minut.</translation>
-    </message>
-    <message>
-        <source>The port used for incoming connections must be between 1 and 65535.</source>
-        <translation>Port příchozích spojení musí být mezi 1 a 65535.</translation>
     </message>
     <message>
         <source>The port used for the Web UI must be between 1 and 65535.</source>
@@ -186,10 +178,6 @@
     <message>
         <source>Login</source>
         <translation>Přihlášení</translation>
-    </message>
-    <message>
-        <source>Original authors</source>
-        <translation>Původní autoři</translation>
     </message>
     <message>
         <source>Apply</source>
@@ -366,6 +354,14 @@
     <message>
         <source>OK</source>
         <translation>OK</translation>
+    </message>
+    <message>
+        <source>The port used for incoming connections must be between 0 and 65535.</source>
+        <translation>Port příchozích spojení musí být mezi 0 a 65535.</translation>
+    </message>
+    <message>
+        <source>Original author</source>
+        <translation>Původní autor</translation>
     </message>
 </context>
 <context>
@@ -575,6 +571,10 @@
         <source>RSS</source>
         <translation>RSS</translation>
     </message>
+    <message>
+        <source>Filters Sidebar</source>
+        <translation type="vanished">Filtry boční panel</translation>
+    </message>
 </context>
 <context>
     <name>OptionsDialog</name>
@@ -721,10 +721,6 @@
     <message>
         <source>Use UPnP / NAT-PMP port forwarding from my router</source>
         <translation>Použít přesměrování portů UPnP / NAT-PMP z mého routeru</translation>
-    </message>
-    <message>
-        <source>Use different port on each startup</source>
-        <translation>Při každém spuštění použít náhodné porty</translation>
     </message>
     <message>
         <source>Connections Limits</source>
@@ -961,10 +957,6 @@
         <translation>%T: Současný tracker</translation>
     </message>
     <message>
-        <source>%I: Info hash</source>
-        <translation type="vanished">%I: Info hash</translation>
-    </message>
-    <message>
         <source>Tip: Encapsulate parameter with quotation marks to avoid text being cut off at whitespace (e.g., "%N")</source>
         <translation>Tip: Ohraničit parametr uvozovkami, aby nedošlo k odstřižení textu za mezerou (např. "%N")</translation>
     </message>
@@ -1191,10 +1183,6 @@
     <message>
         <source>Outgoing ports (Min) [0: Disabled]:</source>
         <translation>Odchozí porty (Min) [0: Vypnuto]</translation>
-    </message>
-    <message>
-        <source>IP Address to report to trackers (requires restart):</source>
-        <translation>IP adresa hlášená trackerům (vyžaduje restart):</translation>
     </message>
     <message>
         <source>Recheck torrents on completion:</source>
@@ -1450,35 +1438,63 @@
     </message>
     <message>
         <source>Outgoing connections per second:</source>
-        <translation type="unfinished" />
+        <translation>Odchozích spojení za sekundu:</translation>
     </message>
     <message>
         <source>Random</source>
-        <translation type="unfinished" />
+        <translation>Náhodný</translation>
     </message>
     <message>
         <source>%K: Torrent ID</source>
-        <translation type="unfinished" />
+        <translation>%K: Torrent ID</translation>
     </message>
     <message>
         <source>Reannounce to all trackers when IP or port changed:</source>
-        <translation type="unfinished" />
+        <translation>Znovu oznámit všem trackerům při změne IP nebo portu</translation>
     </message>
     <message>
         <source>Trusted proxies list:</source>
-        <translation type="unfinished" />
+        <translation>Seznam důvěryhodných proxy:</translation>
     </message>
     <message>
         <source>Enable reverse proxy support</source>
-        <translation type="unfinished" />
+        <translation>Zapnout podporu reverzní proxy</translation>
     </message>
     <message>
         <source>%J: Info hash v2</source>
-        <translation type="unfinished" />
+        <translation>%J: Info hash v2</translation>
     </message>
     <message>
         <source>%I: Info hash v1</source>
-        <translation type="unfinished" />
+        <translation>%I: Info hash v1</translation>
+    </message>
+    <message>
+        <source>IP address reported to trackers (requires restart):</source>
+        <translation>IP adresa hlášená trackerům (vyžaduje restart)</translation>
+    </message>
+    <message>
+        <source>Set to 0 to let your system pick an unused port</source>
+        <translation>Nastav na 0 a systém vybere nevyužitý port</translation>
+    </message>
+    <message>
+        <source>Server-side request forgery (SSRF) mitigation:</source>
+        <translation>Zamezení falšování požadavků na straně serveru (SSRF):</translation>
+    </message>
+    <message>
+        <source>Disk queue size:</source>
+        <translation type="vanished">Velikost diskové fronty:</translation>
+    </message>
+    <message>
+        <source>Log performance warnings</source>
+        <translation type="vanished">Log výkonnostních varování</translation>
+    </message>
+    <message>
+        <source>Maximum outstanding requests to a single peer:</source>
+        <translation type="vanished">Maximum nezpracovaných požadavků na jeden peer:</translation>
+    </message>
+    <message>
+        <source>Max active checking torrents:</source>
+        <translation type="vanished">Maximum souběžně kontrolovaných torrentů:</translation>
     </message>
 </context>
 <context>
@@ -1552,12 +1568,12 @@
         <translation>Kopírovat IP:port</translation>
     </message>
     <message>
-        <source>Add a new peer...</source>
-        <translation>Přidat nový peer...</translation>
-    </message>
-    <message>
         <source>Country/Region</source>
         <translation>Země/Oblast</translation>
+    </message>
+    <message>
+        <source>Add peers...</source>
+        <translation>Přidání peerů...</translation>
     </message>
 </context>
 <context>
@@ -1709,10 +1725,6 @@
         <translation>Vytvořeno:</translation>
     </message>
     <message>
-        <source>Torrent Hash:</source>
-        <translation type="vanished">Kontrolní součet:</translation>
-    </message>
-    <message>
         <source>Save Path:</source>
         <translation>Uložit do:</translation>
     </message>
@@ -1770,15 +1782,19 @@
     </message>
     <message>
         <source>Info Hash v2:</source>
-        <translation type="unfinished" />
+        <translation>Info Hash v2:</translation>
     </message>
     <message>
         <source>Info Hash v1:</source>
-        <translation type="unfinished" />
+        <translation>Info Hash v1:</translation>
     </message>
     <message>
         <source>N/A</source>
-        <translation type="unfinished" />
+        <translation>N/A</translation>
+    </message>
+    <message>
+        <source>Progress:</source>
+        <translation>Průběh:</translation>
     </message>
 </context>
 <context>
@@ -1987,6 +2003,14 @@
     <message>
         <source>Stalled (%1)</source>
         <translation>Pozastaveno (%1)</translation>
+    </message>
+    <message>
+        <source>Checking (%1)</source>
+        <translation>Kontroluji (%1)</translation>
+    </message>
+    <message>
+        <source>Checking (0)</source>
+        <translation>Kontroluji (0)</translation>
     </message>
 </context>
 <context>
@@ -2244,8 +2268,12 @@
         <translation>Průběh</translation>
     </message>
     <message>
+        <source>Total Size</source>
+        <translation type="vanished">Celková velikost</translation>
+    </message>
+    <message>
         <source>Size</source>
-        <translation>Velikost</translation>
+        <translation type="unfinished" />
     </message>
 </context>
 <context>
@@ -2329,6 +2357,10 @@
     <message>
         <source>%1 (seeded for %2)</source>
         <translation>%1 (sdíleno %2)</translation>
+    </message>
+    <message>
+        <source>[F] Downloading metadata</source>
+        <translation>[F] Stahuji metadata</translation>
     </message>
 </context>
 <context>
@@ -2507,10 +2539,6 @@
         <translation>Magnet link</translation>
     </message>
     <message>
-        <source>Hash</source>
-        <translation type="vanished">Hash</translation>
-    </message>
-    <message>
         <source>Remove All</source>
         <translation>Odstranit vše</translation>
     </message>
@@ -2532,15 +2560,15 @@
     </message>
     <message>
         <source>Info hash v1</source>
-        <translation type="unfinished" />
+        <translation>Info hash v1</translation>
     </message>
     <message>
         <source>Info hash v2</source>
-        <translation type="unfinished" />
+        <translation>Info hash v2</translation>
     </message>
     <message>
         <source>Torrent ID</source>
-        <translation type="unfinished" />
+        <translation>Torrent ID</translation>
     </message>
 </context>
 <context>
@@ -2740,10 +2768,6 @@
         <translation>Hledat v:</translation>
     </message>
     <message>
-        <source>Results (showing</source>
-        <translation>Výsledky (zobrazuji</translation>
-    </message>
-    <message>
         <source>Filter</source>
         <translation>Filtr</translation>
     </message>
@@ -2773,7 +2797,15 @@
     </message>
     <message>
         <source>to</source>
-        <translation type="unfinished" />
+        <translation>do</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>Výsledky</translation>
+    </message>
+    <message>
+        <source>showing</source>
+        <translation>zobrazeno</translation>
     </message>
 </context>
 <context>
@@ -3001,16 +3033,28 @@
         <translation>Národnost:</translation>
     </message>
     <message>
-        <source>Author</source>
-        <translation>Autor</translation>
-    </message>
-    <message>
         <source>Software Used</source>
         <translation>Použitý software</translation>
     </message>
     <message>
         <source>The free IP to Country Lite database by DB-IP is used for resolving the countries of peers. The database is licensed under the Creative Commons Attribution 4.0 International License</source>
         <translation>Bezplatná databáze IP to Country Lite od DB-IP se používá k řešení zemí peerů. Databáze je licencována podle mezinárodní licence Creative Commons Attribution 4.0</translation>
+    </message>
+    <message>
+        <source>Authors</source>
+        <translation>Autoři</translation>
+    </message>
+    <message>
+        <source>France</source>
+        <translation>Francie</translation>
+    </message>
+    <message>
+        <source>qBittorrent Mascot</source>
+        <translation>qBittorrent Mascot</translation>
+    </message>
+    <message>
+        <source>qBittorrent icon</source>
+        <translation>ikona qBittorrent</translation>
     </message>
 </context>
 <context>
@@ -3441,7 +3485,7 @@ Podporuje formáty: S01E01, 1x1, 2017.12.31 a 31.12.2017 (Formáty dat také pod
     </message>
     <message>
         <source>Unread</source>
-        <translation type="unfinished" />
+        <translation>Nepřečtené</translation>
     </message>
 </context>
 </TS>

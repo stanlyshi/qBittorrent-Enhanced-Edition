@@ -32,6 +32,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <memory>
+#include <tuple>
 
 #if defined(Q_OS_UNIX)
 #include <sys/resource.h>
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
     // We must save it here because QApplication constructor may change it
     bool isOneArg = (argc == 2);
 
-#if !defined(DISABLE_GUI)
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0)) && !defined(DISABLE_GUI)
     // Attribute Qt::AA_EnableHighDpiScaling must be set before QCoreApplication is created
     if (qgetenv("QT_ENABLE_HIGHDPI_SCALING").isEmpty() && qgetenv("QT_AUTO_SCREEN_SCALE_FACTOR").isEmpty())
         Application::setAttribute(Qt::AA_EnableHighDpiScaling, true);
@@ -188,7 +189,6 @@ int main(int argc, char *argv[])
 #ifndef DISABLE_GUI
             if (!userAgreesWithLegalNotice())
                 return EXIT_SUCCESS;
-
 #elif defined(Q_OS_WIN)
             if (_isatty(_fileno(stdin))
                 && _isatty(_fileno(stdout))
@@ -201,6 +201,8 @@ int main(int argc, char *argv[])
                 && !userAgreesWithLegalNotice())
                 return EXIT_SUCCESS;
 #endif
+
+            setCurrentMigrationVersion();
         }
 
         // Check if qBittorrent is already running for this user
@@ -320,17 +322,13 @@ int main(int argc, char *argv[])
 void reportToUser(const char *str)
 {
     const size_t strLen = strlen(str);
-#ifndef Q_OS_WIN
-    if (write(STDERR_FILENO, str, strLen) < static_cast<ssize_t>(strLen))
-    {
-        const auto dummy = write(STDOUT_FILENO, str, strLen);
+#ifdef Q_OS_WIN
+    if (_write(_fileno(stderr), str, strLen) < static_cast<int>(strLen))
+        std::ignore = _write(_fileno(stdout), str, strLen);
 #else
-    if (_write(STDERR_FILENO, str, strLen) < static_cast<ssize_t>(strLen))
-    {
-        const auto dummy = _write(STDOUT_FILENO, str, strLen);
+    if (write(STDERR_FILENO, str, strLen) < static_cast<ssize_t>(strLen))
+        std::ignore = write(STDOUT_FILENO, str, strLen);
 #endif
-        Q_UNUSED(dummy);
-    }
 }
 #endif
 
@@ -359,7 +357,9 @@ void sigAbnormalHandler(int signum)
     reportToUser(msg);
     reportToUser(sigName);
     reportToUser("\n");
+#if !defined Q_OS_WIN
     print_stacktrace();  // unsafe
+#endif
 #endif
 
 #if defined Q_OS_WIN && !defined DISABLE_GUI

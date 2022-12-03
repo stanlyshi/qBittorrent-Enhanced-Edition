@@ -123,8 +123,12 @@ namespace
 
         // Spoof HTTP Referer to allow adding torrent link from Torcache/KickAssTorrents
         request.setRawHeader("Referer", request.url().toEncoded().data());
-        // Accept gzip
+#ifdef QT_NO_COMPRESS
+        // The macro "QT_NO_COMPRESS" defined in QT will disable the zlib releated features
+        // and reply data auto-decompression in QT will also be disabled. But we can support
+        // gzip encoding and manually decompress the reply data.
         request.setRawHeader("Accept-Encoding", "gzip");
+#endif
         // Qt doesn't support Magnet protocol so we need to handle redirections manually
         request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
 
@@ -345,6 +349,17 @@ bool Net::DownloadRequest::saveToFile() const
 Net::DownloadRequest &Net::DownloadRequest::saveToFile(const bool value)
 {
     m_saveToFile = value;
+    return *this;
+}
+
+QString Net::DownloadRequest::destFileName() const
+{
+    return m_destFileName;
+}
+
+Net::DownloadRequest &Net::DownloadRequest::destFileName(const QString &value)
+{
+    m_destFileName = value;
     return *this;
 }
 

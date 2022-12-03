@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QHash>
@@ -43,7 +45,7 @@
 #include "base/utils/net.h"
 #include "base/utils/version.h"
 
-inline const Utils::Version<int, 3, 2> API_VERSION {2, 8, 3};
+inline const Utils::Version<int, 3, 2> API_VERSION {2, 8, 5};
 
 class APIController;
 class WebApplication;
@@ -72,7 +74,7 @@ class WebApplication final
         , private Http::ResponseBuilder
 {
     Q_OBJECT
-    Q_DISABLE_COPY(WebApplication)
+    Q_DISABLE_COPY_MOVE(WebApplication)
 
 #ifndef Q_MOC_RUN
 #define WEBAPI_PUBLIC
@@ -130,6 +132,20 @@ private:
 
     QHash<QString, APIController *> m_apiControllers;
     QSet<QString> m_publicAPIs;
+    const QHash<std::pair<QString, QString>, QString> m_allowedMethod =
+    {
+        // <<controller name, action name>, HTTP method>
+        // TODO: this list is incomplete
+        {{QLatin1String("app"), QLatin1String("setPreferences")}, Http::METHOD_POST},
+        {{QLatin1String("app"), QLatin1String("shutdown")}, Http::METHOD_POST},
+        {{QLatin1String("auth"), QLatin1String("login")}, Http::METHOD_POST},
+        {{QLatin1String("auth"), QLatin1String("logout")}, Http::METHOD_POST},
+        {{QLatin1String("rss"), QLatin1String("addFeed")}, Http::METHOD_POST},
+        {{QLatin1String("search"), QLatin1String("installPlugin")}, Http::METHOD_POST},
+        {{QLatin1String("torrents"), QLatin1String("add")}, Http::METHOD_POST},
+        {{QLatin1String("torrents"), QLatin1String("addPeers")}, Http::METHOD_POST},
+        {{QLatin1String("torrents"), QLatin1String("addTrackers")}, Http::METHOD_POST}
+    };
     bool m_isAltUIUsed = false;
     QString m_rootFolder;
 

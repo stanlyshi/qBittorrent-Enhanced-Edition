@@ -86,12 +86,13 @@ void AppController::buildInfoAction()
 
 void AppController::shutdownAction()
 {
-    qDebug() << "Shutdown request from Web UI";
-
-    // Special case handling for shutdown, we
+    // Special handling for shutdown, we
     // need to reply to the Web UI before
     // actually shutting down.
-    QTimer::singleShot(100, qApp, &QCoreApplication::quit);
+    QTimer::singleShot(100, qApp, []()
+    {
+        QCoreApplication::exit();
+    });
 }
 
 void AppController::preferencesAction()
@@ -112,9 +113,9 @@ void AppController::preferencesAction()
     data["torrent_changed_tmm_enabled"] = !session->isDisableAutoTMMWhenCategoryChanged();
     data["save_path_changed_tmm_enabled"] = !session->isDisableAutoTMMWhenDefaultSavePathChanged();
     data["category_changed_tmm_enabled"] = !session->isDisableAutoTMMWhenCategorySavePathChanged();
-    data["save_path"] = Utils::Fs::toNativePath(session->defaultSavePath());
-    data["temp_path_enabled"] = session->isTempPathEnabled();
-    data["temp_path"] = Utils::Fs::toNativePath(session->tempPath());
+    data["save_path"] = Utils::Fs::toNativePath(session->savePath());
+    data["temp_path_enabled"] = session->isDownloadPathEnabled();
+    data["temp_path"] = Utils::Fs::toNativePath(session->downloadPath());
     data["export_dir"] = Utils::Fs::toNativePath(session->torrentExportDirectory());
     data["export_dir_fin"] = Utils::Fs::toNativePath(session->finishedTorrentExportDirectory());
 
@@ -153,8 +154,8 @@ void AppController::preferencesAction()
     // Connection
     // Listening Port
     data["listen_port"] = session->port();
+    data["random_port"] = (session->port() == 0);  // deprecated
     data["upnp"] = Net::PortForwarder::instance()->isEnabled();
-    data["random_port"] = session->useRandomPort();
     // Connections Limits
     data["max_connec"] = session->maxConnections();
     data["max_connec_per_torrent"] = session->maxConnectionsPerTorrent();
@@ -200,7 +201,7 @@ void AppController::preferencesAction()
     const QTime end_time = pref->getSchedulerEndTime();
     data["schedule_to_hour"] = end_time.hour();
     data["schedule_to_min"] = end_time.minute();
-    data["scheduler_days"] = pref->getSchedulerDays();
+    data["scheduler_days"] = static_cast<int>(pref->getSchedulerDays());
 
     // Bittorrent
     // Privacy
@@ -269,7 +270,7 @@ void AppController::preferencesAction()
     data["web_ui_reverse_proxies_list"] = pref->getWebUITrustedReverseProxiesList();
     // Update my dynamic domain name
     data["dyndns_enabled"] = pref->isDynDNSEnabled();
-    data["dyndns_service"] = pref->getDynDNSService();
+    data["dyndns_service"] = static_cast<int>(pref->getDynDNSService());
     data["dyndns_username"] = pref->getDynDNSUsername();
     data["dyndns_password"] = pref->getDynDNSPassword();
     data["dyndns_domain"] = pref->getDynDomainName();
@@ -340,6 +341,8 @@ void AppController::preferencesAction()
     data["enable_multi_connections_from_same_ip"] = session->multiConnectionsPerIpEnabled();
     // Validate HTTPS tracker certificate
     data["validate_https_tracker_certificate"] = session->validateHTTPSTrackerCertificate();
+    // SSRF mitigation
+    data["ssrf_mitigation"] = session->isSSRFMitigationEnabled();
     // Disallow connection to peers on privileged ports
     data["block_peers_on_privileged_ports"] = session->blockPeersOnPrivilegedPorts();
     // Embedded tracker
@@ -402,11 +405,11 @@ void AppController::setPreferencesAction()
     if (hasKey("category_changed_tmm_enabled"))
         session->setDisableAutoTMMWhenCategorySavePathChanged(!it.value().toBool());
     if (hasKey("save_path"))
-        session->setDefaultSavePath(it.value().toString());
+        session->setSavePath(it.value().toString());
     if (hasKey("temp_path_enabled"))
-        session->setTempPathEnabled(it.value().toBool());
+        session->setDownloadPathEnabled(it.value().toBool());
     if (hasKey("temp_path"))
-        session->setTempPath(it.value().toString());
+        session->setDownloadPath(it.value().toString());
     if (hasKey("export_dir"))
         session->setTorrentExportDirectory(it.value().toString());
     if (hasKey("export_dir_fin"))
@@ -487,12 +490,16 @@ void AppController::setPreferencesAction()
 
     // Connection
     // Listening Port
-    if (hasKey("listen_port"))
+    if (hasKey("random_port") && it.value().toBool())  // deprecated
+    {
+        session->setPort(0);
+    }
+    else if (hasKey("listen_port"))
+    {
         session->setPort(it.value().toInt());
+    }
     if (hasKey("upnp"))
         Net::PortForwarder::instance()->setEnabled(it.value().toBool());
-    if (hasKey("random_port"))
-        session->setUseRandomPort(it.value().toBool());
     // Connections Limits
     if (hasKey("max_connec"))
         session->setMaxConnections(it.value().toInt());
@@ -563,7 +570,7 @@ void AppController::setPreferencesAction()
     if (m.contains("schedule_to_hour") && m.contains("schedule_to_min"))
         pref->setSchedulerEndTime(QTime(m["schedule_to_hour"].toInt(), m["schedule_to_min"].toInt()));
     if (hasKey("scheduler_days"))
-        pref->setSchedulerDays(SchedulerDays(it.value().toInt()));
+        pref->setSchedulerDays(static_cast<Scheduler::Days>(it.value().toInt()));
 
     // Bittorrent
     // Privacy
@@ -705,7 +712,7 @@ void AppController::setPreferencesAction()
     if (hasKey("dyndns_enabled"))
         pref->setDynDNSEnabled(it.value().toBool());
     if (hasKey("dyndns_service"))
-        pref->setDynDNSService(it.value().toInt());
+        pref->setDynDNSService(static_cast<DNS::Service>(it.value().toInt()));
     if (hasKey("dyndns_username"))
         pref->setDynDNSUsername(it.value().toString());
     if (hasKey("dyndns_password"))
@@ -828,6 +835,9 @@ void AppController::setPreferencesAction()
     // Validate HTTPS tracker certificate
     if (hasKey("validate_https_tracker_certificate"))
         session->setValidateHTTPSTrackerCertificate(it.value().toBool());
+    // SSRF mitigation
+    if (hasKey("ssrf_mitigation"))
+        session->setSSRFMitigationEnabled(it.value().toBool());
     // Disallow connection to peers on privileged ports
     if (hasKey("block_peers_on_privileged_ports"))
         session->setBlockPeersOnPrivilegedPorts(it.value().toBool());
@@ -870,7 +880,7 @@ void AppController::setPreferencesAction()
 
 void AppController::defaultSavePathAction()
 {
-    setResult(BitTorrent::Session::instance()->defaultSavePath());
+    setResult(BitTorrent::Session::instance()->savePath());
 }
 
 void AppController::networkInterfaceListAction()

@@ -68,7 +68,7 @@ namespace
 class FileSystemPathEdit::FileSystemPathEditPrivate
 {
     Q_DECLARE_PUBLIC(FileSystemPathEdit)
-    Q_DISABLE_COPY(FileSystemPathEditPrivate)
+    Q_DISABLE_COPY_MOVE(FileSystemPathEditPrivate)
 
     FileSystemPathEditPrivate(FileSystemPathEdit *q, Private::FileEditorWithCompletion *editor);
 
@@ -111,8 +111,12 @@ FileSystemPathEdit::FileSystemPathEditPrivate::FileSystemPathEditPrivate(
 void FileSystemPathEdit::FileSystemPathEditPrivate::browseActionTriggered()
 {
     Q_Q(FileSystemPathEdit);
+
+    const QFileInfo fileInfo {q->selectedPath()};
+    const QString directory = (m_mode == FileSystemPathEdit::Mode::DirectoryOpen) || (m_mode == FileSystemPathEdit::Mode::DirectorySave)
+            ? fileInfo.absoluteFilePath()
+            : fileInfo.absolutePath();
     QString filter = q->fileNameFilter();
-    QString directory = q->currentDirectory().isEmpty() ? QDir::homePath() : q->currentDirectory();
 
     QString selectedPath;
     switch (m_mode)
@@ -155,26 +159,21 @@ QString FileSystemPathEdit::FileSystemPathEditPrivate::dialogCaptionOrDefault() 
 
 void FileSystemPathEdit::FileSystemPathEditPrivate::modeChanged()
 {
-    QStyle::StandardPixmap pixmap = QStyle::SP_DialogOpenButton;
     bool showDirsOnly = false;
     switch (m_mode)
     {
     case FileSystemPathEdit::Mode::FileOpen:
     case FileSystemPathEdit::Mode::FileSave:
-#ifdef Q_OS_WIN
-        pixmap = QStyle::SP_DirOpenIcon;
-#endif
         showDirsOnly = false;
         break;
     case FileSystemPathEdit::Mode::DirectoryOpen:
     case FileSystemPathEdit::Mode::DirectorySave:
-        pixmap = QStyle::SP_DirOpenIcon;
         showDirsOnly = true;
         break;
     default:
         throw std::logic_error("Unknown FileSystemPathEdit mode");
     }
-    m_browseAction->setIcon(QApplication::style()->standardIcon(pixmap));
+    m_browseAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirOpenIcon));
     m_editor->completeDirectoriesOnly(showDirsOnly);
 
     m_validator->setExistingOnly(m_mode != FileSystemPathEdit::Mode::FileSave);
@@ -252,6 +251,18 @@ void FileSystemPathEdit::setFileNameFilter(const QString &val)
 #endif
 }
 
+QString FileSystemPathEdit::placeholder() const
+{
+    Q_D(const FileSystemPathEdit);
+    return d->m_editor->placeholder();
+}
+
+void FileSystemPathEdit::setPlaceholder(const QString &val)
+{
+    Q_D(FileSystemPathEdit);
+    d->m_editor->setPlaceholder(val);
+}
+
 bool FileSystemPathEdit::briefBrowseButtonCaption() const
 {
     Q_D(const FileSystemPathEdit);
@@ -299,11 +310,6 @@ void FileSystemPathEdit::setDialogCaption(const QString &caption)
 {
     Q_D(FileSystemPathEdit);
     d->m_dialogCaption = caption;
-}
-
-QString FileSystemPathEdit::currentDirectory() const
-{
-    return QFileInfo(selectedPath()).absoluteDir().absolutePath();
 }
 
 QWidget *FileSystemPathEdit::editWidgetImpl() const

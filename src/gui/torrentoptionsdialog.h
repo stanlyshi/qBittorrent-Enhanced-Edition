@@ -34,6 +34,8 @@
 
 #include "base/settingvalue.h"
 
+class QAbstractButton;
+
 namespace BitTorrent
 {
     class Torrent;
@@ -48,7 +50,7 @@ namespace Ui
 class TorrentOptionsDialog final : public QDialog
 {
     Q_OBJECT
-    Q_DISABLE_COPY(TorrentOptionsDialog)
+    Q_DISABLE_COPY_MOVE(TorrentOptionsDialog)
 
 public:
     explicit TorrentOptionsDialog(QWidget *parent, const QVector<BitTorrent::Torrent *> &torrents);
@@ -58,6 +60,10 @@ public slots:
     void accept() override;
 
 private slots:
+    void handleCategoryChanged(int index);
+    void handleTMMChanged();
+    void handleUseDownloadPathChanged();
+
     void handleUpSpeedLimitChanged();
     void handleDownSpeedLimitChanged();
 
@@ -70,14 +76,25 @@ private:
     QVector<BitTorrent::TorrentID> m_torrentIDs;
     Ui::TorrentOptionsDialog *m_ui;
     SettingValue<QSize> m_storeDialogSize;
+    QStringList m_categories;
+    QString m_currentCategoriesString;
+    bool m_allSameCategory = true;
+    QAbstractButton *m_previousRadio = nullptr;
     struct
     {
+        QString savePath;
+        QString downloadPath;
+        QString category;
         qreal ratio;
         int seedingTime;
         int upSpeedLimit;
         int downSpeedLimit;
+        Qt::CheckState autoTMM;
+        Qt::CheckState useDownloadPath;
         Qt::CheckState disableDHT;
         Qt::CheckState disablePEX;
         Qt::CheckState disableLSD;
+        Qt::CheckState sequential;
+        Qt::CheckState firstLastPieces;
     } m_initialValues;
 };

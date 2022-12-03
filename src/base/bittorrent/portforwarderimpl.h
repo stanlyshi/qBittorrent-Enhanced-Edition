@@ -36,11 +36,12 @@
 #include <QHash>
 
 #include "base/net/portforwarder.h"
+#include "base/settingvalue.h"
 
 class PortForwarderImpl final : public Net::PortForwarder
 {
     Q_OBJECT
-    Q_DISABLE_COPY(PortForwarderImpl)
+    Q_DISABLE_COPY_MOVE(PortForwarderImpl)
 
 public:
     explicit PortForwarderImpl(lt::session *provider, QObject *parent = nullptr);
@@ -56,7 +57,7 @@ private:
     void start();
     void stop();
 
-    bool m_active;
+    CachedSettingValue<bool> m_storeActive;
     lt::session *m_provider;
     QHash<quint16, std::vector<lt::port_mapping_t>> m_mappedPorts;
 };

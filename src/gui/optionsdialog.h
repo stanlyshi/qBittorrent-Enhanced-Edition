@@ -41,10 +41,11 @@ class AdvancedSettings;
 // actions on double-click on torrents
 enum DoubleClickAction
 {
-    TOGGLE_PAUSE,
-    OPEN_DEST,
-    PREVIEW_FILE,
-    NO_ACTION
+    TOGGLE_PAUSE = 0,
+    OPEN_DEST = 1,
+    PREVIEW_FILE = 2,
+    NO_ACTION = 3,
+    SHOW_OPTIONS = 4
 };
 
 namespace Net
@@ -60,7 +61,7 @@ namespace Ui
 class OptionsDialog final : public QDialog
 {
     Q_OBJECT
-    Q_DISABLE_COPY(OptionsDialog)
+    Q_DISABLE_COPY_MOVE(OptionsDialog)
 
     using ThisType = OptionsDialog;
 
@@ -125,7 +126,7 @@ private:
     // General options
     QString getLocale() const;
 #ifndef Q_OS_MACOS
-    bool systrayIntegration() const;
+    bool systemTrayEnabled() const;
     bool minimizeToTray() const;
     bool closeToTray() const;
 #endif
@@ -141,14 +142,12 @@ private:
     QString getTorrentExportDir() const;
     QString getFinishedTorrentExportDir() const;
     QString askForExportDir(const QString &currentExportPath);
-    int getActionOnDblClOnTorrentDl() const;
-    int getActionOnDblClOnTorrentFn() const;
     // Connection options
     int getPort() const;
     bool isUPnPEnabled() const;
     // Bittorrent options
-    int getMaxConnecs() const;
-    int getMaxConnecsPerTorrent() const;
+    int getMaxConnections() const;
+    int getMaxConnectionsPerTorrent() const;
     int getMaxUploads() const;
     int getMaxUploadsPerTorrent() const;
     bool isDHTEnabled() const;
@@ -184,6 +183,7 @@ private:
     Ui::OptionsDialog *m_ui;
     SettingValue<QSize> m_storeDialogSize;
     SettingValue<QStringList> m_storeHSplitterSize;
+    SettingValue<int> m_storeLastViewedPage;
 
     QPushButton *m_applyButton;
 

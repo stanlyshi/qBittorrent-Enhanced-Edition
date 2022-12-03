@@ -1,4 +1,4 @@
-AC_INIT([qbittorrent], [v4.4.0alpha], [bugs.qbittorrent.org], [], [https://www.qbittorrent.org/])
+AC_INIT([qbittorrent], [v4.4.5], [bugs.qbittorrent.org], [], [https://www.qbittorrent.org/])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 : ${CFLAGS=""}
@@ -53,17 +53,32 @@ AC_ARG_ENABLE(qt-dbus,
               [enable_qt_dbus=yes])
 
 # Detect OS
-AC_MSG_CHECKING([whether OS is FreeBSD])
-AS_IF([expr "$host_os" : ".*freebsd.*" > /dev/null],
-      [AC_MSG_RESULT([yes])
-      LIBS="-lexecinfo $LIBS"],
-      [AC_MSG_RESULT([no])])
+AC_MSG_CHECKING([whether to enable specific tweaks for current host "$host_os"])
+case "$host_os" in
+    *darwin*)
+        AC_MSG_RESULT([yes])
+        enable_qt_dbus=no
+        ;;
 
-AC_MSG_CHECKING([whether OS is macOS])
-AS_IF([expr "$host_os" : ".*darwin.*" > /dev/null],
-      [AC_MSG_RESULT([yes])
-      enable_qt_dbus=no],
-      [AC_MSG_RESULT([no])])
+    *freebsd*)
+        AC_MSG_RESULT([yes])
+        LIBS="-lexecinfo $LIBS"
+        ;;
+
+    *haiku*)
+        AC_MSG_RESULT([yes])
+        LIBS="-lnetwork $LIBS"
+        ;;
+
+    *openbsd*)
+        AC_MSG_RESULT([yes])
+        LIBS="-lexecinfo $LIBS"
+        ;;
+
+    *)
+        AC_MSG_RESULT([no])
+        ;;
+esac
 
 # Require 0.23 pkg-config
 PKG_PROG_PKG_CONFIG([0.23])
@@ -141,7 +156,7 @@ AS_IF([test "x$QT_QMAKE" = "x"],
       [AC_MSG_ERROR([Could not find qmake])
       ])
 AS_IF([test "x$enable_gui" = "xyes"],
-      [PKG_CHECK_MODULES(Qt5Svg, [Qt5Svg >= 5.14])
+      [PKG_CHECK_MODULES(Qt5Svg, [Qt5Svg >= 5.15.2])
       ])
 AC_MSG_CHECKING([whether QtDBus should be enabled])
 AS_CASE(["x$enable_qt_dbus"],
@@ -176,9 +191,11 @@ AC_COMPILE_IFELSE([DETECT_BOOST_VERSION_PROGRAM(106000)], [],
     [QBT_ADD_DEFINES="$QBT_ADD_DEFINES BOOST_NO_CXX11_RVALUE_REFERENCES"])
 
 PKG_CHECK_MODULES(libtorrent,
-                  [libtorrent-rasterbar >= 1.2.13],
-                  [CXXFLAGS="$libtorrent_CFLAGS $CXXFLAGS"
-                  LIBS="$libtorrent_LIBS $LIBS"])
+                  [libtorrent-rasterbar >= 2.0.4],
+                  [CXXFLAGS="$libtorrent_CFLAGS $CXXFLAGS" LIBS="$libtorrent_LIBS $LIBS" QBT_ADD_DEFINES="$QBT_ADD_DEFINES QBT_USES_LIBTORRENT2"],
+                  [PKG_CHECK_MODULES(libtorrent,
+                                     [libtorrent-rasterbar >= 1.2.14 libtorrent-rasterbar < 2],
+                                     [CXXFLAGS="$libtorrent_CFLAGS $CXXFLAGS" LIBS="$libtorrent_LIBS $LIBS"])])
 
 PKG_CHECK_MODULES(openssl,
                   [openssl >= 1.1.1],

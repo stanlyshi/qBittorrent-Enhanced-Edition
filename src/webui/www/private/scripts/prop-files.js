@@ -43,7 +43,9 @@ window.qBittorrent.PropFiles = (function() {
             createPriorityCombo: createPriorityCombo,
             updatePriorityCombo: updatePriorityCombo,
             updateData: updateData,
-            collapseIconClicked: collapseIconClicked
+            collapseIconClicked: collapseIconClicked,
+            expandFolder: expandFolder,
+            collapseFolder: collapseFolder
         };
     };
 
@@ -180,7 +182,6 @@ window.qBittorrent.PropFiles = (function() {
         select.set('id', 'comboPrio' + id);
         select.set('data-id', id);
         select.set('data-file-id', fileId);
-        select.set('disabled', is_seed);
         select.addClass('combo_priority');
         select.addEvent('change', fileComboboxChanged);
 
@@ -202,9 +203,6 @@ window.qBittorrent.PropFiles = (function() {
 
         if (parseInt(combobox.value) !== selectedPriority)
             selectComboboxPriority(combobox, selectedPriority);
-
-        if (combobox.disabled !== is_seed)
-            combobox.disabled = is_seed;
     };
 
     const selectComboboxPriority = function(combobox, priority) {
@@ -493,6 +491,20 @@ window.qBittorrent.PropFiles = (function() {
             expandNode(node);
         else
             collapseNode(node);
+    };
+
+    const expandFolder = function(id) {
+        const node = torrentFilesTable.getNode(id);
+        if (node.isFolder) {
+            expandNode(node);
+        }
+    };
+
+    const collapseFolder = function(id) {
+        const node = torrentFilesTable.getNode(id);
+        if (node.isFolder) {
+            collapseNode(node);
+        }
     };
 
     const filesPriorityMenuClicked = function(priority) {

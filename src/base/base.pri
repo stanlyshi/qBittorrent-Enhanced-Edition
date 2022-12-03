@@ -1,4 +1,5 @@
 HEADERS += \
+    $$PWD/3rdparty/expected.hpp \
     $$PWD/algorithm.h \
     $$PWD/asyncfilestorage.h \
     $$PWD/bittorrent/abstractfilestorage.h \
@@ -6,6 +7,7 @@ HEADERS += \
     $$PWD/bittorrent/bandwidthscheduler.h \
     $$PWD/bittorrent/bencoderesumedatastorage.h \
     $$PWD/bittorrent/cachestatus.h \
+    $$PWD/bittorrent/categoryoptions.h \
     $$PWD/bittorrent/common.h \
     $$PWD/bittorrent/customstorage.h \
     $$PWD/bittorrent/downloadpriority.h \
@@ -15,7 +17,7 @@ HEADERS += \
     $$PWD/bittorrent/infohash.h \
     $$PWD/bittorrent/loadtorrentparams.h \
     $$PWD/bittorrent/ltqhash.h \
-    $$PWD/bittorrent/ltunderlyingtype.h \
+    $$PWD/bittorrent/lttypecast.h \
     $$PWD/bittorrent/magneturi.h \
     $$PWD/bittorrent/nativesessionextension.h \
     $$PWD/bittorrent/nativetorrentextension.h \
@@ -99,6 +101,7 @@ SOURCES += \
     $$PWD/bittorrent/abstractfilestorage.cpp \
     $$PWD/bittorrent/bandwidthscheduler.cpp \
     $$PWD/bittorrent/bencoderesumedatastorage.cpp \
+    $$PWD/bittorrent/categoryoptions.cpp \
     $$PWD/bittorrent/customstorage.cpp \
     $$PWD/bittorrent/dbresumedatastorage.cpp \
     $$PWD/bittorrent/downloadpriority.cpp \
@@ -115,6 +118,7 @@ SOURCES += \
     $$PWD/bittorrent/speedmonitor.cpp \
     $$PWD/bittorrent/statistics.cpp \
     $$PWD/bittorrent/torrent.cpp \
+    $$PWD/bittorrent/torrentcontentlayout.cpp \
     $$PWD/bittorrent/torrentcreatorthread.cpp \
     $$PWD/bittorrent/torrentimpl.cpp \
     $$PWD/bittorrent/torrentinfo.cpp \

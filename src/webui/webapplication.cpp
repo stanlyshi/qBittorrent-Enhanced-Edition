@@ -72,11 +72,11 @@ const QString PRIVATE_FOLDER {QStringLiteral("/private")};
 
 namespace
 {
-    QStringMap parseCookie(const QString &cookieStr)
+    QStringMap parseCookie(const QStringView cookieStr)
     {
         // [rfc6265] 4.2.1. Syntax
         QStringMap ret;
-        const QVector<QStringRef> cookies = cookieStr.splitRef(';', Qt::SkipEmptyParts);
+        const QList<QStringView> cookies = cookieStr.split(u';', Qt::SkipEmptyParts);
 
         for (const auto &cookie : cookies)
         {
@@ -276,6 +276,20 @@ void WebApplication::doProcessRequest()
     if (!session() && !isPublicAPI(scope, action))
         throw ForbiddenHTTPError();
 
+    // Filter HTTP methods
+    const auto allowedMethodIter = m_allowedMethod.find({scope, action});
+    if (allowedMethodIter == m_allowedMethod.end())
+    {
+        // by default allow both GET, POST methods
+        if ((m_request.method != Http::METHOD_GET) && (m_request.method != Http::METHOD_POST))
+            throw MethodNotAllowedHTTPError();
+    }
+    else
+    {
+        if (*allowedMethodIter != m_request.method)
+            throw MethodNotAllowedHTTPError();
+    }
+
     DataMap data;
     for (const Http::UploadedFile &torrent : request().files)
         data[torrent.filename] = torrent.data;
@@ -386,10 +400,10 @@ void WebApplication::configure()
 
     if (pref->isWebUICustomHTTPHeadersEnabled())
     {
-        const QString customHeaders = pref->getWebUICustomHTTPHeaders().trimmed();
-        const QVector<QStringRef> customHeaderLines = customHeaders.splitRef('\n', Qt::SkipEmptyParts);
+        const QString customHeaders = pref->getWebUICustomHTTPHeaders();
+        const QList<QStringView> customHeaderLines = QStringView(customHeaders).trimmed().split(u'\n', Qt::SkipEmptyParts);
 
-        for (const QStringRef &line : customHeaderLines)
+        for (const QStringView line : customHeaderLines)
         {
             const int idx = line.indexOf(':');
             if (idx < 0)

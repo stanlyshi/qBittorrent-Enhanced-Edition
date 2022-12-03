@@ -4,22 +4,17 @@
 # Based on https://gist.github.com/giraldeau/546ba5512a74dfe9d8ea0862d66db412
 file(GLOB QBT_TS_FILES "${qBittorrent_SOURCE_DIR}/src/lang/*.ts")
 set_source_files_properties(${QBT_TS_FILES} PROPERTIES OUTPUT_LOCATION "${qBittorrent_BINARY_DIR}/src/lang")
-qt5_add_translation(QBT_QM_FILES ${QBT_TS_FILES} OPTIONS -silent)
+qt_add_translation(QBT_QM_FILES ${QBT_TS_FILES} OPTIONS -silent)
 configure_file("${qBittorrent_SOURCE_DIR}/src/lang/lang.qrc" "${qBittorrent_BINARY_DIR}/src/lang/lang.qrc" COPYONLY)
 
 if (WEBUI)
     file(GLOB QBT_WEBUI_TS_FILES "${qBittorrent_SOURCE_DIR}/src/webui/www/translations/*.ts")
     set_source_files_properties(${QBT_WEBUI_TS_FILES}
         PROPERTIES OUTPUT_LOCATION "${qBittorrent_BINARY_DIR}/src/webui/www/translations")
-    qt5_add_translation(QBT_WEBUI_QM_FILES ${QBT_WEBUI_TS_FILES} OPTIONS -silent)
+    qt_add_translation(QBT_WEBUI_QM_FILES ${QBT_WEBUI_TS_FILES} OPTIONS -silent)
     configure_file("${qBittorrent_SOURCE_DIR}/src/webui/www/translations/webui_translations.qrc"
         "${qBittorrent_BINARY_DIR}/src/webui/www/translations/webui_translations.qrc" COPYONLY)
 endif()
-
-FILE(GLOB QT_TRANSLATIONS "${qBittorrent_SOURCE_DIR}/dist/qt-translations/qtbase_*.qm")
-foreach(EXTRA_TRANSLATION IN ITEMS "fa" "gl" "lt" "pt" "sl" "sv" "zh_CN")
-    list(APPEND QT_TRANSLATIONS "${qBittorrent_SOURCE_DIR}/dist/qt-translations/qt_${EXTRA_TRANSLATION}.qm")
-endforeach()
 
 # Executable target configuration
 # -----------------------------------------------------------------------------
@@ -65,16 +60,17 @@ endif()
 # Additional platform specific configuration
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
-set_source_files_properties(${QT_TRANSLATIONS} PROPERTIES MACOSX_PACKAGE_LOCATION translations)
-set_source_files_properties(
-    "${qBittorrent_SOURCE_DIR}/dist/mac/qt.conf"
-    "${qBittorrent_SOURCE_DIR}/dist/mac/qBitTorrentDocument.icns"
-    "${qBittorrent_SOURCE_DIR}/dist/mac/qbittorrent_mac.icns"
-        PROPERTIES
-            MACOSX_PACKAGE_LOCATION Resources
-)
-
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    include(FindQtTranslations)
+    qbt_get_qt_translations(QT_TRANSLATIONS)
+    set_source_files_properties(${QT_TRANSLATIONS} PROPERTIES MACOSX_PACKAGE_LOCATION translations)
+    set_source_files_properties(
+        "${qBittorrent_SOURCE_DIR}/dist/mac/qt.conf"
+        "${qBittorrent_SOURCE_DIR}/dist/mac/qBitTorrentDocument.icns"
+        "${qBittorrent_SOURCE_DIR}/dist/mac/qbittorrent_mac.icns"
+            PROPERTIES
+                MACOSX_PACKAGE_LOCATION Resources
+    )
     # provide variables for substitution in dist/mac/Info.plist
     get_target_property(EXECUTABLE_NAME qbt_app OUTPUT_NAME)
     # This variable name should be changed once qmake is no longer used. Refer to the discussion in PR #14813
@@ -139,7 +135,7 @@ endif()
 if (GUI)
     target_link_libraries(qbt_app PRIVATE qbt_gui)
     if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
-        qt_import_plugins(qbt_app INCLUDE Qt5::QSvgIconPlugin Qt5::QSvgPlugin)
+        qt_import_plugins(qbt_app INCLUDE Qt::QSvgIconPlugin Qt::QSvgPlugin)
     endif()
 endif()
 

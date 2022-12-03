@@ -41,7 +41,7 @@ namespace Ui
 class WatchedFolderOptionsDialog final : public QDialog
 {
     Q_OBJECT
-    Q_DISABLE_COPY(WatchedFolderOptionsDialog)
+    Q_DISABLE_COPY_MOVE(WatchedFolderOptionsDialog)
 
 public:
     explicit WatchedFolderOptionsDialog(const TorrentFilesWatcher::WatchedFolderOptions &watchedFolderOptions, QWidget *parent);
@@ -50,7 +50,7 @@ public:
     TorrentFilesWatcher::WatchedFolderOptions watchedFolderOptions() const;
 
 private:
-    void populateSavePathComboBox();
+    void populateSavePaths();
     void loadState();
     void saveState();
     void onTMMChanged(int index);
@@ -58,5 +58,7 @@ private:
 
     Ui::WatchedFolderOptionsDialog *m_ui;
     QString m_savePath;
+    QString m_downloadPath;
+    bool m_useDownloadPath = false;
     SettingValue<QSize> m_storeDialogSize;
 };

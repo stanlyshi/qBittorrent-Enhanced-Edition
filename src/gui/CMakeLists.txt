@@ -199,13 +199,15 @@ target_link_libraries(qbt_gui
     PRIVATE
         qbt_base
     PUBLIC
-        Qt5::Gui Qt5::Widgets
+        Qt::Gui Qt::Widgets
 )
 
 if (DBUS)
     target_sources(qbt_gui PRIVATE
-        qtnotify/notifications.h
-        qtnotify/notifications.cpp
+        notifications/dbusnotifier.h
+        notifications/dbusnotifier.cpp
+        notifications/dbusnotificationsinterface.h
+        notifications/dbusnotificationsinterface.cpp
         powermanagement/powermanagement_x11.h
         powermanagement/powermanagement_x11.cpp
     )
@@ -219,10 +221,10 @@ if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR (CMAKE_SYSTEM_NAME STREQUAL "Darwi
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(qbt_gui PRIVATE
-        Qt5::WinExtras
-        PowrProf
-    )
+    target_link_libraries(qbt_gui PRIVATE PowrProf)
+    if (NOT QT6)
+        target_link_libraries(qbt_gui PRIVATE Qt5::WinExtras)
+    endif()
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -230,7 +232,5 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         macutilities.h
         macutilities.mm
     )
-    target_link_libraries(qbt_gui PRIVATE
-        objc
-    )
+    target_link_libraries(qbt_gui PRIVATE objc)
 endif()

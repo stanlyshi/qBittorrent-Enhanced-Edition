@@ -10,17 +10,20 @@ project(qBittorrent
 
 # use CONFIG mode first in find_package
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
-# version requirements - older vesions may work, but you are on your own
+# version requirements - older versions may work, but you are on your own
 set(minBoostVersion 1.65)
-set(minQtVersion 5.14)
+set(minQt5Version 5.15.2)
+set(minQt6Version 6.2)
 set(minOpenSSLVersion 1.1.1)
-set(minLibtorrentVersion 1.2.13)
+set(minLibtorrent1Version 1.2.14)
+set(minLibtorrentVersion 2.0.4)
 set(minZlibVersion 1.2.11)
 
 # features (some are platform-specific)
 include(CheckCXXSourceCompiles) # TODO: migrate to CheckSourceCompiles in CMake >= 3.19
 include(FeatureSummary)
 include(FeatureOptionsSetup)
+feature_option(QT6 "Use Qt6" OFF)
 feature_option(STACKTRACE "Enable stacktraces" ON)
 feature_option(GUI "Build GUI application" ON)
 feature_option(WEBUI "Enables built-in HTTP server for headless use" ON)

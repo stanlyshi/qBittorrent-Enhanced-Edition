@@ -41,7 +41,7 @@ using namespace Net;
 DNSUpdater::DNSUpdater(QObject *parent)
     : QObject(parent)
     , m_state(OK)
-    , m_service(DNS::NONE)
+    , m_service(DNS::Service::None)
 {
     updateCredentials();
 
@@ -76,7 +76,7 @@ void DNSUpdater::checkPublicIP()
     Q_ASSERT(m_state == OK);
 
     DownloadManager::instance()->download(
-                DownloadRequest("http://checkip.dyndns.org").userAgent("qBittorrent/" QBT_VERSION_2)
+                DownloadRequest("http://checkip.dyndns.org").userAgent("qBittorrent Enhanced/" QBT_VERSION_2)
                 , this, &DNSUpdater::ipRequestFinished);
 
     m_lastIPCheckTime = QDateTime::currentDateTime();
@@ -124,7 +124,7 @@ void DNSUpdater::updateDNSService()
 
     m_lastIPCheckTime = QDateTime::currentDateTime();
     DownloadManager::instance()->download(
-                DownloadRequest(getUpdateUrl()).userAgent("qBittorrent/" QBT_VERSION_2)
+                DownloadRequest(getUpdateUrl()).userAgent("qBittorrent Enhanced/" QBT_VERSION_2)
                 , this, &DNSUpdater::ipUpdateFinished);
 }
 
@@ -143,15 +143,16 @@ QString DNSUpdater::getUpdateUrl() const
     // Service specific
     switch (m_service)
     {
-    case DNS::DYNDNS:
+    case DNS::Service::DynDNS:
         url.setHost("members.dyndns.org");
         break;
-    case DNS::NOIP:
+    case DNS::Service::NoIP:
         url.setHost("dynupdate.no-ip.com");
         break;
     default:
         qWarning() << "Unrecognized Dynamic DNS service!";
-        Q_ASSERT(0);
+        Q_ASSERT(false);
+        break;
     }
     url.setPath("/nic/update");
 
@@ -213,7 +214,7 @@ void DNSUpdater::processIPUpdateReply(const QString &reply)
 
     if (code == "badagent")
     {
-        logger->addMessage(tr("Dynamic DNS error: qBittorrent was blacklisted by the service, please report a bug at http://bugs.qbittorrent.org."),
+        logger->addMessage(tr("Dynamic DNS error: qBittorrent was blacklisted by the service, please submit a bug report at http://bugs.qbittorrent.org."),
                            Log::CRITICAL);
         m_state = FATAL;
         return;
@@ -221,7 +222,7 @@ void DNSUpdater::processIPUpdateReply(const QString &reply)
 
     if (code == "!donator")
     {
-        logger->addMessage(tr("Dynamic DNS error: %1 was returned by the service, please report a bug at http://bugs.qbittorrent.org.").arg("!donator"),
+        logger->addMessage(tr("Dynamic DNS error: %1 was returned by the service, please submit a bug report at http://bugs.qbittorrent.org.").arg("!donator"),
                            Log::CRITICAL);
         m_state = FATAL;
         return;
@@ -295,16 +296,17 @@ void DNSUpdater::updateCredentials()
     }
 }
 
-QUrl DNSUpdater::getRegistrationUrl(const int service)
+QUrl DNSUpdater::getRegistrationUrl(const DNS::Service service)
 {
     switch (service)
     {
-    case DNS::DYNDNS:
+    case DNS::Service::DynDNS:
         return {"https://account.dyn.com/entrance/"};
-    case DNS::NOIP:
+    case DNS::Service::NoIP:
         return {"https://www.noip.com/remote-access"};
     default:
-        Q_ASSERT(0);
+        Q_ASSERT(false);
+        break;
     }
     return {};
 }

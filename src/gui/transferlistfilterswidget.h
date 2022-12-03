@@ -32,6 +32,9 @@
 #include <QListWidget>
 #include <QtContainerFwd>
 
+#include "base/bittorrent/infohash.h"
+#include "base/bittorrent/trackerentry.h"
+
 class QCheckBox;
 class QResizeEvent;
 
@@ -40,8 +43,6 @@ class TransferListWidget;
 namespace BitTorrent
 {
     class Torrent;
-    class TorrentID;
-    struct TrackerEntry;
 }
 
 namespace Net
@@ -52,7 +53,7 @@ namespace Net
 class BaseFilterWidget : public QListWidget
 {
     Q_OBJECT
-    Q_DISABLE_COPY(BaseFilterWidget)
+    Q_DISABLE_COPY_MOVE(BaseFilterWidget)
 
 public:
     BaseFilterWidget(QWidget *parent, TransferListWidget *transferList);
@@ -76,7 +77,7 @@ private slots:
 class StatusFilterWidget final : public BaseFilterWidget
 {
     Q_OBJECT
-    Q_DISABLE_COPY(StatusFilterWidget)
+    Q_DISABLE_COPY_MOVE(StatusFilterWidget)
 
 public:
     StatusFilterWidget(QWidget *parent, TransferListWidget *transferList);
@@ -97,7 +98,7 @@ private:
 class TrackerFiltersList final : public BaseFilterWidget
 {
     Q_OBJECT
-    Q_DISABLE_COPY(TrackerFiltersList)
+    Q_DISABLE_COPY_MOVE(TrackerFiltersList)
 
 public:
     TrackerFiltersList(QWidget *parent, TransferListWidget *transferList, bool downloadFavicon);
@@ -143,7 +144,7 @@ class TagFilterWidget;
 class TransferListFiltersWidget final : public QFrame
 {
     Q_OBJECT
-    Q_DISABLE_COPY(TransferListFiltersWidget)
+    Q_DISABLE_COPY_MOVE(TransferListFiltersWidget)
 
 public:
     TransferListFiltersWidget(QWidget *parent, TransferListWidget *transferList, bool downloadFavicon);

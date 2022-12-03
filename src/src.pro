@@ -23,7 +23,7 @@ nogui {
         DEFINES += QBT_STATIC_QT
         QTPLUGIN += qico
     }
-    win32 {
+    win32: lessThan(QT_MAJOR_VERSION, 6) {
         QT += winextras
     }
     macx {
@@ -56,7 +56,7 @@ CONFIG(release, debug|release) {
 include(../version.pri)
 
 # Qt defines
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050e00
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050f02
 DEFINES += QT_NO_CAST_TO_ASCII
 DEFINES += QT_NO_CAST_FROM_BYTEARRAY
 DEFINES += QT_USE_QSTRINGBUILDER

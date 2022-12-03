@@ -51,16 +51,6 @@
 #include "torrent.h"
 #include "torrentinfo.h"
 
-#if (LIBTORRENT_VERSION_NUM == 20003)
-// file_prio_alert is missing to be forward declared in "libtorrent/fwd.hpp"
-namespace libtorrent
-{
-    TORRENT_VERSION_NAMESPACE_3
-    struct file_prio_alert;
-    TORRENT_VERSION_NAMESPACE_3_END
-}
-#endif
-
 namespace BitTorrent
 {
     class Session;
@@ -86,7 +76,7 @@ namespace BitTorrent
 
     class TorrentImpl final : public QObject, public Torrent
     {
-        Q_DISABLE_COPY(TorrentImpl)
+        Q_DISABLE_COPY_MOVE(TorrentImpl)
         Q_DECLARE_TR_FUNCTIONS(BitTorrent::TorrentImpl)
 
     public:
@@ -109,14 +99,15 @@ namespace BitTorrent
         qlonglong wastedSize() const override;
         QString currentTracker() const override;
 
-        QString savePath(bool actual = false) const override;
-        QString rootPath(bool actual = false) const override;
-        QString contentPath(bool actual = false) const override;
-
-        bool useTempPath() const override;
-
         bool isAutoTMMEnabled() const override;
         void setAutoTMMEnabled(bool enabled) override;
+        QString savePath() const override;
+        void setSavePath(const QString &path) override;
+        QString downloadPath() const override;
+        void setDownloadPath(const QString &path) override;
+        QString actualStorageLocation() const override;
+        QString rootPath() const override;
+        QString contentPath() const override;
         QString category() const override;
         bool belongsToCategory(const QString &category) const override;
         bool setCategory(const QString &category) override;
@@ -136,8 +127,8 @@ namespace BitTorrent
         int seedingTimeLimit() const override;
 
         QString filePath(int index) const override;
-        QString fileName(int index) const override;
         qlonglong fileSize(int index) const override;
+        QStringList filePaths() const override;
         QStringList absoluteFilePaths() const override;
         QVector<DownloadPriority> filePriorities() const override;
 
@@ -159,7 +150,6 @@ namespace BitTorrent
         bool hasMetadata() const override;
         bool hasMissingFiles() const override;
         bool hasError() const override;
-        bool hasFilteredPieces() const override;
         int queuePosition() const override;
         QVector<TrackerEntry> trackers() const override;
         QVector<QUrl> urlSeeds() const override;
@@ -212,7 +202,6 @@ namespace BitTorrent
         void setFirstLastPiecePriority(bool enabled) override;
         void pause() override;
         void resume(TorrentOperatingMode mode = TorrentOperatingMode::AutoManaged) override;
-        void move(QString path) override;
         void forceReannounce(int index = -1) override;
         void forceDHTAnnounce() override;
         void forceRecheck() override;
@@ -235,6 +224,7 @@ namespace BitTorrent
         void clearPeers() override;
 
         QString createMagnetURI() const override;
+        nonstd::expected<void, QString> exportToFile(const QString &path) const;
 
         bool needSaveResumeData() const;
 
@@ -243,14 +233,11 @@ namespace BitTorrent
 
         void handleAlert(const lt::alert *a);
         void handleStateUpdate(const lt::torrent_status &nativeStatus);
-        void handleTempPathChanged();
-        void handleCategorySavePathChanged();
+        void handleCategoryOptionsChanged();
         void handleAppendExtensionToggled();
         void saveResumeData();
         void handleMoveStorageJobFinished(bool hasOutstandingJob);
         void fileSearchFinished(const QString &savePath, const QStringList &fileNames);
-
-        QString actualStorageLocation() const;
 
     private:
         using EventTrigger = std::function<void ()>;
@@ -262,13 +249,12 @@ namespace BitTorrent
         void handleFastResumeRejectedAlert(const lt::fastresume_rejected_alert *p);
         void handleFileCompletedAlert(const lt::file_completed_alert *p);
         void handleFileErrorAlert(const lt::file_error_alert *p);
-#if (LIBTORRENT_VERSION_NUM >= 20003)
+#ifdef QBT_USES_LIBTORRENT2
         void handleFilePrioAlert(const lt::file_prio_alert *p);
 #endif
         void handleFileRenamedAlert(const lt::file_renamed_alert *p);
         void handleFileRenameFailedAlert(const lt::file_rename_failed_alert *p);
         void handleMetadataReceivedAlert(const lt::metadata_received_alert *p);
-        void handlePerformanceAlert(const lt::performance_alert *p) const;
         void handleSaveResumeDataAlert(const lt::save_resume_data_alert *p);
         void handleSaveResumeDataFailedAlert(const lt::save_resume_data_failed_alert *p);
         void handleTorrentCheckedAlert(const lt::torrent_checked_alert *p);
@@ -283,9 +269,7 @@ namespace BitTorrent
 
         void setAutoManaged(bool enable);
 
-        void adjustActualSavePath();
-        void adjustActualSavePath_impl();
-        void move_impl(QString path, MoveStorageMode mode);
+        void adjustStorageLocation();
         void moveStorage(const QString &newPath, MoveStorageMode mode);
         void manageIncompleteFiles();
         void applyFirstLastPiecePriority(bool enabled, const QVector<DownloadPriority> &updatedFilePrio = {});
@@ -300,6 +284,8 @@ namespace BitTorrent
         lt::torrent_status m_nativeStatus;
         TorrentState m_state = TorrentState::Unknown;
         TorrentInfo m_torrentInfo;
+        QStringList m_filePaths;
+        QHash<lt::file_index_t, int> m_indexMap;
         SpeedMonitor m_speedMonitor;
 
         InfoHash m_infoHash;
@@ -312,16 +298,13 @@ namespace BitTorrent
 
         MaintenanceJob m_maintenanceJob = MaintenanceJob::None;
 
-        // Until libtorrent provide an "old_name" field in `file_renamed_alert`
-        // we will rely on this workaround to remove empty leftover folders
-        QHash<lt::file_index_t, QVector<QString>> m_oldPath;
-
         QHash<QString, QMap<lt::tcp::endpoint, int>> m_trackerPeerCounts;
         FileErrorInfo m_lastFileError;
 
         // Persistent data
         QString m_name;
         QString m_savePath;
+        QString m_downloadPath;
         QString m_category;
         TagSet m_tags;
         qreal m_ratioLimit;

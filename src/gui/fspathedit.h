@@ -44,7 +44,6 @@ namespace Private
 class FileSystemPathEdit : public QWidget
 {
     Q_OBJECT
-    Q_ENUMS(Mode)
     Q_PROPERTY(Mode mode READ mode WRITE setMode)
     Q_PROPERTY(QString selectedPath READ selectedPath WRITE setSelectedPath NOTIFY selectedPathChanged)
     Q_PROPERTY(QString fileNameFilter READ fileNameFilter WRITE setFileNameFilter)
@@ -60,16 +59,19 @@ public:
         DirectoryOpen,   //!< selecting existing directories
         DirectorySave    //!< selecting directories for saving
     };
+    Q_ENUM(Mode)
 
     Mode mode() const;
     void setMode(Mode mode);
 
-    QString currentDirectory() const;
     QString selectedPath() const;
     void setSelectedPath(const QString &val);
 
     QString fileNameFilter() const;
     void setFileNameFilter(const QString &val);
+
+    QString placeholder() const;
+    void setPlaceholder(const QString &val);
 
     /// The browse button caption is "..." if true, and "Browse" otherwise
     bool briefBrowseButtonCaption() const;
@@ -100,7 +102,7 @@ private:
     virtual void setEditWidgetText(const QString &text) = 0;
 
     QWidget *editWidgetImpl() const;
-    Q_DISABLE_COPY(FileSystemPathEdit)
+    Q_DISABLE_COPY_MOVE(FileSystemPathEdit)
     class FileSystemPathEditPrivate;
     Q_DECLARE_PRIVATE(FileSystemPathEdit)
     FileSystemPathEditPrivate *d_ptr;

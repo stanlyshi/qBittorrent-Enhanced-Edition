@@ -71,6 +71,7 @@ TrackerListWidget::TrackerListWidget(PropertiesWidget *properties)
     setItemsExpandable(false);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     header()->setStretchLastSection(false); // Must be set after loadSettings() in order to work
+    header()->setTextElideMode(Qt::ElideRight);
     // Ensure that at least one column is visible at all times
     if (visibleColumnsCount() == 0)
         setColumnHidden(COL_URL, false);
@@ -373,6 +374,7 @@ void TrackerListWidget::loadTrackers()
         {
             item = new QTreeWidgetItem();
             item->setText(COL_URL, trackerURL);
+            item->setToolTip(COL_URL, trackerURL);
             addTopLevelItem(item);
             m_trackerItems[trackerURL] = item;
         }
@@ -400,6 +402,7 @@ void TrackerListWidget::loadTrackers()
         }
 
         item->setText(COL_MSG, entry.message);
+        item->setToolTip(COL_MSG, entry.message);
         item->setText(COL_PEERS, ((entry.numPeers > -1)
             ? QString::number(entry.numPeers)
             : tr("N/A")));

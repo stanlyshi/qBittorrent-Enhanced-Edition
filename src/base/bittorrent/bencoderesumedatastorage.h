@@ -38,12 +38,10 @@ class QThread;
 
 namespace BitTorrent
 {
-    class TorrentInfo;
-
     class BencodeResumeDataStorage final : public ResumeDataStorage
     {
         Q_OBJECT
-        Q_DISABLE_COPY(BencodeResumeDataStorage)
+        Q_DISABLE_COPY_MOVE(BencodeResumeDataStorage)
 
     public:
         explicit BencodeResumeDataStorage(const QString &path, QObject *parent = nullptr);
@@ -57,7 +55,7 @@ namespace BitTorrent
 
     private:
         void loadQueue(const QString &queueFilename);
-        std::optional<LoadTorrentParams> loadTorrentResumeData(const QByteArray &data, const TorrentInfo &metadata) const;
+        std::optional<LoadTorrentParams> loadTorrentResumeData(const QByteArray &data, const QByteArray &metadata) const;
 
         const QDir m_resumeDataDir;
         QVector<TorrentID> m_registeredTorrents;

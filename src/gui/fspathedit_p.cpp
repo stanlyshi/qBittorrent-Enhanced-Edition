@@ -107,30 +107,32 @@ QValidator::State Private::FileSystemPathValidator::validate(QString &input, int
 
     // we test path components from beginning to the one with cursor location in strict mode
     // and the one with cursor and beyond in non-strict mode
-    QVector<QStringRef> components = input.splitRef(QDir::separator(), Qt::KeepEmptyParts);
+    QList<QStringView> components = QStringView(input).split(QDir::separator(), Qt::KeepEmptyParts);
     // find index of the component that contains pos
     int componentWithCursorIndex = 0;
+    int componentWithCursorPosition = 0;
     int pathLength = 0;
 
     // components.size() - 1 because when path ends with QDir::separator(), we will not see the last
     // character in the components array, yet everything past the one before the last delimiter
     // belongs to the last component
-    for (; (componentWithCursorIndex < components.size() - 1) && (pathLength < pos); ++componentWithCursorIndex)
+    for (; (componentWithCursorIndex < (components.size() - 1)) && (pathLength < pos); ++componentWithCursorIndex)
     {
-        pathLength = components[componentWithCursorIndex].position() + components[componentWithCursorIndex].size();
+        pathLength = componentWithCursorPosition + components[componentWithCursorIndex].size();
+        componentWithCursorPosition += components[componentWithCursorIndex].size() + 1;
     }
 
     Q_ASSERT(componentWithCursorIndex < components.size());
 
     m_lastValidationState = QValidator::Acceptable;
     if (componentWithCursorIndex > 0)
-        m_lastValidationState = validate(input, components, m_strictMode, 0, componentWithCursorIndex - 1);
+        m_lastValidationState = validate(components, m_strictMode, 0, componentWithCursorIndex - 1);
     if ((m_lastValidationState == QValidator::Acceptable) && (componentWithCursorIndex < components.size()))
-        m_lastValidationState = validate(input, components, false, componentWithCursorIndex, components.size() - 1);
+        m_lastValidationState = validate(components, false, componentWithCursorIndex, components.size() - 1);
     return m_lastValidationState;
 }
 
-QValidator::State Private::FileSystemPathValidator::validate(const QString &path, const QVector<QStringRef> &pathComponents, bool strict,
+QValidator::State Private::FileSystemPathValidator::validate(const QList<QStringView> &pathComponents, bool strict,
                                                              int firstComponentToTest, int lastComponentToTest) const
 {
     Q_ASSERT(firstComponentToTest >= 0);
@@ -141,12 +143,13 @@ QValidator::State Private::FileSystemPathValidator::validate(const QString &path
     if (pathComponents.empty())
         return strict ? QValidator::Invalid : QValidator::Intermediate;
 
-    for (int i = firstComponentToTest; i < lastComponentToTest; ++i)
+    for (int i = firstComponentToTest; i <= lastComponentToTest; ++i)
     {
-        if (pathComponents[i].isEmpty()) continue;
+        const bool isFinalPath = (i == (pathComponents.size() - 1));
+        const QStringView componentPath = pathComponents[i];
+        if (componentPath.isEmpty()) continue;
 
-        QStringRef componentPath(&path, 0, pathComponents[i].position() + pathComponents[i].size());
-        m_lastTestResult = testPath(componentPath, false);
+        m_lastTestResult = testPath(pathComponents[i], isFinalPath);
         if (m_lastTestResult != TestResult::OK)
         {
             m_lastTestedPath = componentPath.toString();
@@ -154,20 +157,11 @@ QValidator::State Private::FileSystemPathValidator::validate(const QString &path
         }
     }
 
-    const bool finalPath = (lastComponentToTest == (pathComponents.size() - 1));
-    QStringRef componentPath(&path, 0, pathComponents[lastComponentToTest].position()
-                                + pathComponents[lastComponentToTest].size());
-    m_lastTestResult = testPath(componentPath, finalPath);
-    if (m_lastTestResult != TestResult::OK)
-    {
-        m_lastTestedPath = componentPath.toString();
-        return strict ? QValidator::Invalid : QValidator::Intermediate;
-    }
     return QValidator::Acceptable;
 }
 
 Private::FileSystemPathValidator::TestResult
-Private::FileSystemPathValidator::testPath(const QStringRef &path, bool pathIsComplete) const
+Private::FileSystemPathValidator::testPath(const QStringView path, bool pathIsComplete) const
 {
     QFileInfo fi(path.toString());
     if (m_existingOnly && !fi.exists())
@@ -244,6 +238,16 @@ void Private::FileLineEdit::setBrowseAction(QAction *action)
 void Private::FileLineEdit::setValidator(QValidator *validator)
 {
     QLineEdit::setValidator(validator);
+}
+
+QString Private::FileLineEdit::placeholder() const
+{
+    return placeholderText();
+}
+
+void Private::FileLineEdit::setPlaceholder(const QString &val)
+{
+    setPlaceholderText(val);
 }
 
 QWidget *Private::FileLineEdit::widget()
@@ -350,6 +354,16 @@ void Private::FileComboEdit::setBrowseAction(QAction *action)
 void Private::FileComboEdit::setValidator(QValidator *validator)
 {
     lineEdit()->setValidator(validator);
+}
+
+QString Private::FileComboEdit::placeholder() const
+{
+    return lineEdit()->placeholderText();
+}
+
+void Private::FileComboEdit::setPlaceholder(const QString &val)
+{
+    lineEdit()->setPlaceholderText(val);
 }
 
 void Private::FileComboEdit::setFilenameFilters(const QStringList &filters)

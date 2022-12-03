@@ -1,5 +1,6 @@
 add_library(qbt_base STATIC
     # headers
+    3rdparty/expected.hpp
     algorithm.h
     asyncfilestorage.h
     bittorrent/abstractfilestorage.h
@@ -7,6 +8,7 @@ add_library(qbt_base STATIC
     bittorrent/bandwidthscheduler.h
     bittorrent/bencoderesumedatastorage.h
     bittorrent/cachestatus.h
+    bittorrent/categoryoptions.h
     bittorrent/common.h
     bittorrent/customstorage.h
     bittorrent/dbresumedatastorage.h
@@ -16,7 +18,7 @@ add_library(qbt_base STATIC
     bittorrent/infohash.h
     bittorrent/loadtorrentparams.h
     bittorrent/ltqhash.h
-    bittorrent/ltunderlyingtype.h
+    bittorrent/lttypecast.h
     bittorrent/magneturi.h
     bittorrent/nativesessionextension.h
     bittorrent/nativetorrentextension.h
@@ -99,6 +101,7 @@ add_library(qbt_base STATIC
     bittorrent/abstractfilestorage.cpp
     bittorrent/bandwidthscheduler.cpp
     bittorrent/bencoderesumedatastorage.cpp
+    bittorrent/categoryoptions.cpp
     bittorrent/customstorage.cpp
     bittorrent/dbresumedatastorage.cpp
     bittorrent/downloadpriority.cpp
@@ -115,6 +118,7 @@ add_library(qbt_base STATIC
     bittorrent/speedmonitor.cpp
     bittorrent/statistics.cpp
     bittorrent/torrent.cpp
+    bittorrent/torrentcontentlayout.cpp
     bittorrent/torrentcreatorthread.cpp
     bittorrent/torrentimpl.cpp
     bittorrent/torrentinfo.cpp
@@ -176,7 +180,7 @@ target_link_libraries(qbt_base
         ZLIB::ZLIB
     PUBLIC
         LibtorrentRasterbar::torrent-rasterbar
-        Qt5::Core Qt5::Network Qt5::Sql Qt5::Xml
+        Qt::Core Qt::Network Qt::Sql Qt::Xml
         qbt_common_cfg
 )
 
@@ -203,5 +207,5 @@ if (NOT WEBUI)
 endif()
 
 if (DBUS)
-    target_link_libraries(qbt_base PUBLIC Qt5::DBus)
+    target_link_libraries(qbt_base PUBLIC Qt::DBus)
 endif()

@@ -62,6 +62,9 @@ namespace
         // qBittorrent section
         QBITTORRENT_HEADER,
         RESUME_DATA_STORAGE,
+#if (defined(Q_OS_WIN) && defined(QBT_USES_LIBTORRENT2))
+        MEMORY_WORKING_SET_LIMIT,
+#endif
 #if defined(Q_OS_WIN)
         OS_MEMORY_PRIORITY,
 #endif
@@ -98,18 +101,18 @@ namespace
         // libtorrent section
         LIBTORRENT_HEADER,
         ASYNC_IO_THREADS,
-#if (LIBTORRENT_VERSION_NUM >= 20000)
+#ifdef QBT_USES_LIBTORRENT2
         HASHING_THREADS,
 #endif
         FILE_POOL_SIZE,
         CHECKING_MEM_USAGE,
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
         // cache
         DISK_CACHE,
         DISK_CACHE_TTL,
 #endif
         OS_CACHE,
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
         COALESCE_RW,
 #endif
         PIECE_EXTENT_AFFINITY,
@@ -128,6 +131,7 @@ namespace
         IDN_SUPPORT,
         MULTI_CONNECTIONS_PER_IP,
         VALIDATE_HTTPS_TRACKER_CERTIFICATE,
+        SSRF_MITIGATION,
         BLOCK_PEERS_ON_PRIVILEGED_PORTS,
         // seeding
         CHOKING_ALGORITHM,
@@ -197,10 +201,14 @@ void AdvancedSettings::saveAdvancedSettings()
         break;
     }
     session->setOSMemoryPriority(prio);
+
+#ifdef QBT_USES_LIBTORRENT2
+    static_cast<Application *>(QCoreApplication::instance())->setMemoryWorkingSetLimit(m_spinBoxMemoryWorkingSetLimit.value());
+#endif
 #endif
     // Async IO threads
     session->setAsyncIOThreads(m_spinBoxAsyncIOThreads.value());
-#if (LIBTORRENT_VERSION_NUM >= 20000)
+#ifdef QBT_USES_LIBTORRENT2
     // Hashing threads
     session->setHashingThreads(m_spinBoxHashingThreads.value());
 #endif
@@ -208,14 +216,14 @@ void AdvancedSettings::saveAdvancedSettings()
     session->setFilePoolSize(m_spinBoxFilePoolSize.value());
     // Checking Memory Usage
     session->setCheckingMemUsage(m_spinBoxCheckingMemUsage.value());
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
     // Disk write cache
     session->setDiskCacheSize(m_spinBoxCache.value());
     session->setDiskCacheTTL(m_spinBoxCacheTTL.value());
 #endif
     // Enable OS cache
     session->setUseOSCache(m_checkBoxOsCache.isChecked());
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
     // Coalesce reads & writes
     session->setCoalesceReadWriteEnabled(m_checkBoxCoalesceRW.isChecked());
 #endif
@@ -248,6 +256,8 @@ void AdvancedSettings::saveAdvancedSettings()
     session->setMultiConnectionsPerIpEnabled(m_checkBoxMultiConnectionsPerIp.isChecked());
     // Validate HTTPS tracker certificate
     session->setValidateHTTPSTrackerCertificate(m_checkBoxValidateHTTPSTrackerCertificate.isChecked());
+    // SSRF mitigation
+    session->setSSRFMitigationEnabled(m_checkBoxSSRFMitigation.isChecked());
     // Disallow connection to peers on privileged ports
     session->setBlockPeersOnPrivilegedPorts(m_checkBoxBlockPeersOnPrivilegedPorts.isChecked());
     // Recheck torrents on completion
@@ -258,23 +268,14 @@ void AdvancedSettings::saveAdvancedSettings()
     pref->resolvePeerCountries(m_checkBoxResolveCountries.isChecked());
     pref->resolvePeerHostNames(m_checkBoxResolveHosts.isChecked());
     // Network interface
-    if (m_comboBoxInterface.currentIndex() == 0)
-    {
-        // All interfaces (default)
-        session->setNetworkInterface(QString());
-        session->setNetworkInterfaceName(QString());
-    }
-    else
-    {
-        session->setNetworkInterface(m_comboBoxInterface.itemData(m_comboBoxInterface.currentIndex()).toString());
-        session->setNetworkInterfaceName(m_comboBoxInterface.currentText());
-    }
-
+    session->setNetworkInterface(m_comboBoxInterface.currentData().toString());
+    session->setNetworkInterfaceName((m_comboBoxInterface.currentIndex() == 0)
+        ? QString()
+        : m_comboBoxInterface.currentText());
     // Interface address
     // Construct a QHostAddress to filter malformed strings
-    const QHostAddress ifaceAddr(m_comboBoxInterfaceAddress.currentData().toString().trimmed());
+    const QHostAddress ifaceAddr {m_comboBoxInterfaceAddress.currentData().toString()};
     session->setNetworkInterfaceAddress(ifaceAddr.toString());
-
     // Announce IP
     // Construct a QHostAddress to filter malformed strings
     const QHostAddress addr(m_lineEditAnnounceIP.text().trimmed());
@@ -324,7 +325,7 @@ void AdvancedSettings::saveAdvancedSettings()
     session->setPeerTurnoverInterval(m_spinBoxPeerTurnoverInterval.value());
 }
 
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
 void AdvancedSettings::updateCacheSpinSuffix(int value)
 {
     if (value == 0)
@@ -346,45 +347,57 @@ void AdvancedSettings::updateSaveResumeDataIntervalSuffix(const int value)
 
 void AdvancedSettings::updateInterfaceAddressCombo()
 {
-    // Try to get the currently selected interface name
-    const QString ifaceName = m_comboBoxInterface.itemData(m_comboBoxInterface.currentIndex()).toString(); // Empty string for the first element
-    const QString currentAddress = BitTorrent::Session::instance()->networkInterfaceAddress();
-
-    // Clear all items and reinsert them, default to all
-    m_comboBoxInterfaceAddress.clear();
-    m_comboBoxInterfaceAddress.addItem(tr("All addresses"), {});
-    m_comboBoxInterfaceAddress.addItem(tr("All IPv4 addresses"), QLatin1String("0.0.0.0"));
-    m_comboBoxInterfaceAddress.addItem(tr("All IPv6 addresses"), QLatin1String("::"));
-
-    const auto populateCombo = [this](const QHostAddress &addr)
+    const auto toString = [](const QHostAddress &address) -> QString
     {
-        if (addr.protocol() == QAbstractSocket::IPv4Protocol)
-        {
-            const QString str = addr.toString();
-            m_comboBoxInterfaceAddress.addItem(str, str);
+        switch (address.protocol()) {
+        case QAbstractSocket::IPv4Protocol:
+            return address.toString();
+        case QAbstractSocket::IPv6Protocol:
+            return Utils::Net::canonicalIPv6Addr(address).toString();
+        default:
+            Q_ASSERT(false);
+            break;
         }
-        else if (addr.protocol() == QAbstractSocket::IPv6Protocol)
-        {
-            const QString str = Utils::Net::canonicalIPv6Addr(addr).toString();
-            m_comboBoxInterfaceAddress.addItem(str, str);
-        }
+        return {};
     };
 
-    if (ifaceName.isEmpty())
+    // Clear all items and reinsert them
+    m_comboBoxInterfaceAddress.clear();
+    m_comboBoxInterfaceAddress.addItem(tr("All addresses"), QString());
+    m_comboBoxInterfaceAddress.addItem(tr("All IPv4 addresses"), QHostAddress(QHostAddress::AnyIPv4).toString());
+    m_comboBoxInterfaceAddress.addItem(tr("All IPv6 addresses"), QHostAddress(QHostAddress::AnyIPv6).toString());
+
+    const QString currentIface = m_comboBoxInterface.currentData().toString();
+    if (currentIface.isEmpty())  // `any` interface
     {
-        for (const QHostAddress &addr : asConst(QNetworkInterface::allAddresses()))
-            populateCombo(addr);
+        for (const QHostAddress &address : asConst(QNetworkInterface::allAddresses()))
+        {
+            const QString addressString = toString(address);
+            m_comboBoxInterfaceAddress.addItem(addressString, addressString);
+        }
     }
     else
     {
-        const QNetworkInterface iface = QNetworkInterface::interfaceFromName(ifaceName);
-        const QList<QNetworkAddressEntry> addresses = iface.addressEntries();
+        const QList<QNetworkAddressEntry> addresses = QNetworkInterface::interfaceFromName(currentIface).addressEntries();
         for (const QNetworkAddressEntry &entry : addresses)
-            populateCombo(entry.ip());
+        {
+            const QString addressString = toString(entry.ip());
+            m_comboBoxInterfaceAddress.addItem(addressString, addressString);
+        }
     }
 
+    const QString currentAddress = BitTorrent::Session::instance()->networkInterfaceAddress();
     const int index = m_comboBoxInterfaceAddress.findData(currentAddress);
-    m_comboBoxInterfaceAddress.setCurrentIndex(std::max(index, 0));
+    if (index > -1)
+    {
+        m_comboBoxInterfaceAddress.setCurrentIndex(index);
+    }
+    else
+    {
+        // not found, for the sake of UI consistency, add such entry
+        m_comboBoxInterfaceAddress.addItem(currentAddress, currentAddress);
+        m_comboBoxInterfaceAddress.setCurrentIndex(m_comboBoxInterfaceAddress.count() - 1);
+    }
 }
 
 void AdvancedSettings::loadAdvancedSettings()
@@ -439,6 +452,17 @@ void AdvancedSettings::loadAdvancedSettings()
     addRow(OS_MEMORY_PRIORITY, (tr("Process memory priority (Windows >= 8 only)")
         + ' ' + makeLink("https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-memory_priority_information", "(?)"))
         , &m_comboBoxOSMemoryPriority);
+
+#ifdef QBT_USES_LIBTORRENT2
+    m_spinBoxMemoryWorkingSetLimit.setMinimum(1);
+    m_spinBoxMemoryWorkingSetLimit.setMaximum(std::numeric_limits<int>::max());
+    m_spinBoxMemoryWorkingSetLimit.setSuffix(tr(" MiB"));
+    m_spinBoxMemoryWorkingSetLimit.setValue(static_cast<Application *>(QCoreApplication::instance())->memoryWorkingSetLimit());
+
+    addRow(MEMORY_WORKING_SET_LIMIT, (tr("Physical memory (RAM) usage limit")
+        + ' ' + makeLink("https://wikipedia.org/wiki/Working_set", "(?)"))
+        , &m_spinBoxMemoryWorkingSetLimit);
+#endif
 #endif
 
     // Async IO threads
@@ -448,7 +472,7 @@ void AdvancedSettings::loadAdvancedSettings()
     addRow(ASYNC_IO_THREADS, (tr("Asynchronous I/O threads") + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#aio_threads", "(?)"))
             , &m_spinBoxAsyncIOThreads);
 
-#if (LIBTORRENT_VERSION_NUM >= 20000)
+#ifdef QBT_USES_LIBTORRENT2
     // Hashing threads
     m_spinBoxHashingThreads.setMinimum(1);
     m_spinBoxHashingThreads.setMaximum(1024);
@@ -477,7 +501,7 @@ void AdvancedSettings::loadAdvancedSettings()
     m_spinBoxCheckingMemUsage.setSuffix(tr(" MiB"));
     addRow(CHECKING_MEM_USAGE, (tr("Outstanding memory when checking torrents") + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#checking_mem_usage", "(?)"))
             , &m_spinBoxCheckingMemUsage);
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
     // Disk write cache
     m_spinBoxCache.setMinimum(-1);
     // When build as 32bit binary, set the maximum at less than 2GB to prevent crashes.
@@ -505,7 +529,7 @@ void AdvancedSettings::loadAdvancedSettings()
     m_checkBoxOsCache.setChecked(session->useOSCache());
     addRow(OS_CACHE, (tr("Enable OS cache") + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#disk_io_write_mode", "(?)"))
             , &m_checkBoxOsCache);
-#if (LIBTORRENT_VERSION_NUM < 20000)
+#ifndef QBT_USES_LIBTORRENT2
     // Coalesce reads & writes
     m_checkBoxCoalesceRW.setChecked(session->isCoalesceReadWriteEnabled());
     addRow(COALESCE_RW, (tr("Coalesce reads & writes") + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#coalesce_reads", "(?)"))
@@ -605,6 +629,11 @@ void AdvancedSettings::loadAdvancedSettings()
     addRow(VALIDATE_HTTPS_TRACKER_CERTIFICATE, (tr("Validate HTTPS tracker certificates")
             + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#validate_https_trackers", "(?)"))
             , &m_checkBoxValidateHTTPSTrackerCertificate);
+    // SSRF mitigation
+    m_checkBoxSSRFMitigation.setChecked(session->isSSRFMitigationEnabled());
+    addRow(SSRF_MITIGATION, (tr("Server-side request forgery (SSRF) mitigation")
+        + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#ssrf_mitigation", "(?)"))
+        , &m_checkBoxSSRFMitigation);
     // Disallow connection to peers on privileged ports
     m_checkBoxBlockPeersOnPrivilegedPorts.setChecked(session->blockPeersOnPrivilegedPorts());
     addRow(BLOCK_PEERS_ON_PRIVILEGED_PORTS, (tr("Disallow connection to peers on privileged ports") + ' ' + makeLink("https://libtorrent.org/single-page-ref.html#no_connect_privileged_ports", "(?)")), &m_checkBoxBlockPeersOnPrivilegedPorts);
@@ -624,26 +653,23 @@ void AdvancedSettings::loadAdvancedSettings()
     m_checkBoxResolveHosts.setChecked(pref->resolvePeerHostNames());
     addRow(RESOLVE_HOSTS, tr("Resolve peer host names"), &m_checkBoxResolveHosts);
     // Network interface
-    m_comboBoxInterface.addItem(tr("Any interface", "i.e. Any network interface"));
-    const QString currentInterface = session->networkInterface();
-    bool interfaceExists = currentInterface.isEmpty();
-    int i = 1;
+    m_comboBoxInterface.addItem(tr("Any interface", "i.e. Any network interface"), QString());
     for (const QNetworkInterface &iface : asConst(QNetworkInterface::allInterfaces()))
-    {
         m_comboBoxInterface.addItem(iface.humanReadableName(), iface.name());
-        if (!currentInterface.isEmpty() && (iface.name() == currentInterface))
-        {
-            m_comboBoxInterface.setCurrentIndex(i);
-            interfaceExists = true;
-        }
-        ++i;
-    }
-    // Saved interface does not exist, show it anyway
-    if (!interfaceExists)
+
+    const QString currentInterface = session->networkInterface();
+    const int ifaceIndex = m_comboBoxInterface.findData(currentInterface);
+    if (ifaceIndex > -1)
     {
-        m_comboBoxInterface.addItem(session->networkInterfaceName(), currentInterface);
-        m_comboBoxInterface.setCurrentIndex(i);
+        m_comboBoxInterface.setCurrentIndex(ifaceIndex);
     }
+    else
+    {
+        // Saved interface does not exist, show it
+        m_comboBoxInterface.addItem(session->networkInterfaceName(), currentInterface);
+        m_comboBoxInterface.setCurrentIndex(m_comboBoxInterface.count() - 1);
+    }
+
     connect(&m_comboBoxInterface, qOverload<int>(&QComboBox::currentIndexChanged)
         , this, &AdvancedSettings::updateInterfaceAddressCombo);
     addRow(NETWORK_IFACE, tr("Network interface"), &m_comboBoxInterface);
@@ -652,7 +678,7 @@ void AdvancedSettings::loadAdvancedSettings()
     addRow(NETWORK_IFACE_ADDRESS, tr("Optional IP address to bind to"), &m_comboBoxInterfaceAddress);
     // Announce IP
     m_lineEditAnnounceIP.setText(session->announceIP());
-    addRow(ANNOUNCE_IP, (tr("IP Address to report to trackers (requires restart)")
+    addRow(ANNOUNCE_IP, (tr("IP address reported to trackers (requires restart)")
         + ' ' + makeLink("https://www.libtorrent.org/reference-Settings.html#announce_ip", "(?)"))
         , &m_lineEditAnnounceIP);
     // Auto Ban Unknown Peer from China

@@ -29,10 +29,11 @@
 
 #pragma once
 
+#include <QtContainerFwd>
 #include <QMetaType>
 #include <QString>
-#include <QtContainerFwd>
 
+#include "base/3rdparty/expected.hpp"
 #include "base/tagset.h"
 #include "abstractfilestorage.h"
 
@@ -72,6 +73,7 @@ namespace BitTorrent
 
         ForcedDownloading,
         Downloading,
+        ForcedDownloadingMetadata,
         DownloadingMetadata,
         StalledDownloading,
 
@@ -124,11 +126,10 @@ namespace BitTorrent
         virtual qlonglong wastedSize() const = 0;
         virtual QString currentTracker() const = 0;
 
-        // 1. savePath() - the path where all the files and subfolders of torrent are stored (as always).
-        // 2. rootPath() - absolute path of torrent file tree (save path + first item from 1st torrent file path).
+        // 1. savePath() - the path where all the files and subfolders of torrent are stored.
+        // 1.1 downloadPath() - the path where all the files and subfolders of torrent are stored until torrent has finished downloading.
+        // 2. rootPath() - absolute path of torrent file tree (first common subfolder of torrent files); empty string if torrent has no root folder.
         // 3. contentPath() - absolute path of torrent content (root path for multifile torrents, absolute file path for singlefile torrents).
-        //
-        // These methods have 'actual' parameter (defaults to false) which allow to get actual or final path variant.
         //
         // Examples.
         // Suppose we have three torrent with following structures and save path `/home/user/torrents`:
@@ -165,16 +166,17 @@ namespace BitTorrent
         // | A | /home/user/torrents/torrentA | /home/user/torrents/torrentA               |
         // | A*|           <empty>            | /home/user/torrents                        |
         // | B | /home/user/torrents/torrentB | /home/user/torrents/torrentB/subdir1/file1 |
-        // | C | /home/user/torrents/file1    | /home/user/torrents/file1                  |
-
-        virtual QString savePath(bool actual = false) const = 0;
-        virtual QString rootPath(bool actual = false) const = 0;
-        virtual QString contentPath(bool actual = false) const = 0;
-
-        virtual bool useTempPath() const = 0;
+        // | C |           <empty>            | /home/user/torrents/file1                  |
 
         virtual bool isAutoTMMEnabled() const = 0;
         virtual void setAutoTMMEnabled(bool enabled) = 0;
+        virtual QString savePath() const = 0;
+        virtual void setSavePath(const QString &savePath) = 0;
+        virtual QString downloadPath() const = 0;
+        virtual void setDownloadPath(const QString &downloadPath) = 0;
+        virtual QString actualStorageLocation() const = 0;
+        virtual QString rootPath() const = 0;
+        virtual QString contentPath() const = 0;
         virtual QString category() const = 0;
         virtual bool belongsToCategory(const QString &category) const = 0;
         virtual bool setCategory(const QString &category) = 0;
@@ -192,6 +194,7 @@ namespace BitTorrent
         virtual qreal ratioLimit() const = 0;
         virtual int seedingTimeLimit() const = 0;
 
+        virtual QStringList filePaths() const = 0;
         virtual QStringList absoluteFilePaths() const = 0;
         virtual QVector<DownloadPriority> filePriorities() const = 0;
 
@@ -213,7 +216,6 @@ namespace BitTorrent
         virtual bool hasMetadata() const = 0;
         virtual bool hasMissingFiles() const = 0;
         virtual bool hasError() const = 0;
-        virtual bool hasFilteredPieces() const = 0;
         virtual int queuePosition() const = 0;
         virtual QVector<TrackerEntry> trackers() const = 0;
         virtual QVector<QUrl> urlSeeds() const = 0;
@@ -272,7 +274,6 @@ namespace BitTorrent
         virtual void setFirstLastPiecePriority(bool enabled) = 0;
         virtual void pause() = 0;
         virtual void resume(TorrentOperatingMode mode = TorrentOperatingMode::AutoManaged) = 0;
-        virtual void move(QString path) = 0;
         virtual void forceReannounce(int index = -1) = 0;
         virtual void forceDHTAnnounce() = 0;
         virtual void forceRecheck() = 0;
@@ -294,6 +295,7 @@ namespace BitTorrent
         virtual void clearPeers() = 0;
 
         virtual QString createMagnetURI() const = 0;
+        virtual nonstd::expected<void, QString> exportToFile(const QString &path) const = 0;
 
         TorrentID id() const;
         bool isResumed() const;

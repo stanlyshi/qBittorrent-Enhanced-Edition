@@ -33,7 +33,6 @@
 #include <QFileDialog>
 #include <QMenu>
 #include <QMessageBox>
-#include <QPair>
 #include <QRegularExpression>
 #include <QShortcut>
 #include <QSignalBlocker>
@@ -49,6 +48,7 @@
 #include "base/rss/rss_session.h"
 #include "base/utils/compare.h"
 #include "base/utils/fs.h"
+#include "base/utils/io.h"
 #include "base/utils/string.h"
 #include "gui/autoexpandabledialog.h"
 #include "gui/torrentcategorydialog.h"
@@ -330,7 +330,7 @@ void AutomatedRssDownloader::clearRuleDefinitionBox()
 void AutomatedRssDownloader::initCategoryCombobox()
 {
     // Load torrent categories
-    QStringList categories = BitTorrent::Session::instance()->categories().keys();
+    QStringList categories = BitTorrent::Session::instance()->categories();
     std::sort(categories.begin(), categories.end(), Utils::Compare::NaturalLessThan<Qt::CaseInsensitive>());
     m_ui->comboCategory->addItem("");
     m_ui->comboCategory->addItems(categories);
@@ -452,13 +452,12 @@ void AutomatedRssDownloader::on_exportBtn_clicked()
             path += EXT_LEGACY;
     }
 
-    QFile file {path};
-    if (!file.open(QFile::WriteOnly)
-            || (file.write(RSS::AutoDownloader::instance()->exportRules(format)) == -1))
-            {
-        QMessageBox::critical(
-                    this, tr("I/O Error")
-                    , tr("Failed to create the destination file. Reason: %1").arg(file.errorString()));
+    const QByteArray rules = RSS::AutoDownloader::instance()->exportRules(format);
+    const nonstd::expected<void, QString> result = Utils::IO::saveToFile(path, rules);
+    if (!result)
+    {
+        QMessageBox::critical(this, tr("I/O Error")
+            , tr("Failed to create the destination file. Reason: %1").arg(result.error()));
     }
 }
 
@@ -664,7 +663,7 @@ void AutomatedRssDownloader::addFeedArticlesToTree(RSS::Feed *feed, const QStrin
     // Insert the articles
     for (const QString &article : articles)
     {
-        QPair<QString, QString> key(feed->name(), article);
+        const std::pair<QString, QString> key(feed->name(), article);
 
         if (!m_treeListEntries.contains(key))
         {

@@ -81,6 +81,9 @@ PropertiesWidget::PropertiesWidget(QWidget *parent)
 
     m_state = VISIBLE;
 
+    // Files list
+    m_ui->filesList->header()->setContextMenuPolicy(Qt::CustomContextMenu);
+
     // Set Properties list model
     m_propListModel = new TorrentContentFilterModel(this);
     m_ui->filesList->setModel(m_propListModel);
@@ -108,6 +111,7 @@ PropertiesWidget::PropertiesWidget(QWidget *parent)
             , m_ui->filesList, qOverload<const QModelIndex &>(&QAbstractItemView::edit));
     connect(m_ui->filesList, &QWidget::customContextMenuRequested, this, &PropertiesWidget::displayFilesListMenu);
     connect(m_ui->filesList, &QAbstractItemView::doubleClicked, this, &PropertiesWidget::openItem);
+    connect(m_ui->filesList->header(), &QWidget::customContextMenuRequested, this, &PropertiesWidget::displayFileListHeaderMenu);
     connect(m_ui->filesList->header(), &QHeaderView::sectionMoved, this, &PropertiesWidget::saveSettings);
     connect(m_ui->filesList->header(), &QHeaderView::sectionResized, this, &PropertiesWidget::saveSettings);
     connect(m_ui->filesList->header(), &QHeaderView::sortIndicatorChanged, this, &PropertiesWidget::saveSettings);
@@ -171,6 +175,33 @@ PropertiesWidget::~PropertiesWidget()
 {
     delete m_tabBar;
     delete m_ui;
+}
+
+void PropertiesWidget::displayFileListHeaderMenu()
+{
+    QMenu *menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    for (int i = 0; i < TorrentContentModelItem::TreeItemColumns::NB_COL; ++i)
+    {
+        QAction *myAct = menu->addAction(m_propListModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+        myAct->setCheckable(true);
+        myAct->setChecked(!m_ui->filesList->isColumnHidden(i));
+        if (i == TorrentContentModelItem::TreeItemColumns::COL_NAME)
+            myAct->setEnabled(false);
+
+        connect(myAct, &QAction::toggled, this, [this, i](const bool checked)
+        {
+            m_ui->filesList->setColumnHidden(i, !checked);
+
+            if (!m_ui->filesList->isColumnHidden(i) && (m_ui->filesList->columnWidth(i) <= 5))
+                m_ui->filesList->resizeColumnToContents(i);
+
+            saveSettings();
+        });
+    }
+
+    menu->popup(QCursor::pos());
 }
 
 void PropertiesWidget::showPiecesAvailability(bool show)
@@ -331,20 +362,6 @@ void PropertiesWidget::loadTorrentInfos(BitTorrent::Torrent *const torrent)
         loadUrlSeeds();
 
         m_ui->labelCreatedByVal->setText(m_torrent->creator());
-
-        // List files in torrent
-        m_propListModel->model()->setupModelData(m_torrent->info());
-
-        // Expand single-item folders recursively
-        QModelIndex currentIndex;
-        while (m_propListModel->rowCount(currentIndex) == 1)
-        {
-            currentIndex = m_propListModel->index(0, 0, currentIndex);
-            m_ui->filesList->setExpanded(currentIndex, true);
-        }
-
-        // Load file priorities
-        m_propListModel->model()->updateFilesPriorities(m_torrent->filePriorities());
     }
     // Load dynamic data
     loadDynamicData();
@@ -381,7 +398,7 @@ void PropertiesWidget::saveSettings()
         sizes = hSplitter->sizes();
     else
         sizes = m_slideSizes;
-    qDebug("Sizes: %d", sizes.size());
+
     if (sizes.size() == 2)
         pref->setPropSplitterSizes(QString::number(sizes.first()) + ',' + QString::number(sizes.last()));
     pref->setPropFileListState(m_ui->filesList->header()->saveState());
@@ -505,12 +522,40 @@ void PropertiesWidget::loadDynamicData()
         {
             qDebug("Updating priorities in files tab");
             m_ui->filesList->setUpdatesEnabled(false);
-            m_propListModel->model()->updateFilesProgress(m_torrent->filesProgress());
-            m_propListModel->model()->updateFilesAvailability(m_torrent->availableFileFractions());
-            // XXX: We don't update file priorities regularly for performance
-            // reasons. This means that priorities will not be updated if
-            // set from the Web UI.
-            // PropListModel->model()->updateFilesPriorities(h.file_priorities());
+
+            // Load torrent content if not yet done so
+            const bool isContentInitialized = m_propListModel->model()->hasIndex(0, 0);
+            if (!isContentInitialized)
+            {
+                // List files in torrent
+                m_propListModel->model()->setupModelData(*m_torrent);
+                // Load file priorities
+                m_propListModel->model()->updateFilesPriorities(m_torrent->filePriorities());
+                // Update file progress/availability
+                m_propListModel->model()->updateFilesProgress(m_torrent->filesProgress());
+                m_propListModel->model()->updateFilesAvailability(m_torrent->availableFileFractions());
+
+                // Expand single-item folders recursively.
+                // This will trigger sorting and filtering so do it after all relevant data is loaded.
+                QModelIndex currentIndex;
+                while (m_propListModel->rowCount(currentIndex) == 1)
+                {
+                    currentIndex = m_propListModel->index(0, 0, currentIndex);
+                    m_ui->filesList->setExpanded(currentIndex, true);
+                }
+            }
+            else
+            {
+                // Torrent content was loaded already, only make some updates
+
+                m_propListModel->model()->updateFilesProgress(m_torrent->filesProgress());
+                m_propListModel->model()->updateFilesAvailability(m_torrent->availableFileFractions());
+                // XXX: We don't update file priorities regularly for performance
+                // reasons. This means that priorities will not be updated if
+                // set from the Web UI.
+                // m_propListModel->model()->updateFilesPriorities(m_torrent->filePriorities());
+            }
+
             m_ui->filesList->setUpdatesEnabled(true);
         }
         break;
@@ -520,6 +565,9 @@ void PropertiesWidget::loadDynamicData()
 
 void PropertiesWidget::loadUrlSeeds()
 {
+    if (!m_torrent)
+        return;
+
     m_ui->listWebSeeds->clear();
     qDebug("Loading URL seeds");
     const QVector<QUrl> hcSeeds = m_torrent->urlSeeds();
@@ -533,11 +581,12 @@ void PropertiesWidget::loadUrlSeeds()
 
 QString PropertiesWidget::getFullPath(const QModelIndex &index) const
 {
+    const QDir saveDir {m_torrent->actualStorageLocation()};
+
     if (m_propListModel->itemType(index) == TorrentContentModelItem::FileType)
     {
         const int fileIdx = m_propListModel->getFileIndex(index);
         const QString filename {m_torrent->filePath(fileIdx)};
-        const QDir saveDir {m_torrent->savePath(true)};
         const QString fullPath {Utils::Fs::expandPath(saveDir.absoluteFilePath(filename))};
         return fullPath;
     }
@@ -548,7 +597,6 @@ QString PropertiesWidget::getFullPath(const QModelIndex &index) const
     for (QModelIndex modelIdx = m_propListModel->parent(nameIndex); modelIdx.isValid(); modelIdx = modelIdx.parent())
         folderPath.prepend(modelIdx.data().toString() + '/');
 
-    const QDir saveDir {m_torrent->savePath(true)};
     const QString fullPath {Utils::Fs::expandPath(saveDir.absoluteFilePath(folderPath))};
     return fullPath;
 }
@@ -608,7 +656,7 @@ void PropertiesWidget::displayFilesListMenu(const QPoint &)
             }
 
             // Save changes
-            filteredFilesChanged();
+            this->applyPriorities();
         };
 
         QMenu *subMenu = menu->addMenu(tr("Priority"));
@@ -661,6 +709,9 @@ void PropertiesWidget::displayFilesListMenu(const QPoint &)
                 const QModelIndex &index = selectedRows[i];
                 m_propListModel->setData(index.sibling(index.row(), PRIORITY)
                     , static_cast<int>(priority));
+
+                // Save changes
+                this->applyPriorities();
             }
         });
     }
@@ -715,21 +766,31 @@ void PropertiesWidget::configure()
     // Speed widget
     if (Preferences::instance()->isSpeedWidgetEnabled())
     {
-        if (!m_speedWidget || !qobject_cast<SpeedWidget *>(m_speedWidget))
+        if (!qobject_cast<SpeedWidget *>(m_speedWidget))
         {
-            m_ui->speedLayout->removeWidget(m_speedWidget);
-            delete m_speedWidget;
-            m_speedWidget = new SpeedWidget {this};
+            if (m_speedWidget)
+            {
+                m_ui->speedLayout->removeWidget(m_speedWidget);
+                delete m_speedWidget;
+            }
+
+            m_speedWidget = new SpeedWidget(this);
             m_ui->speedLayout->addWidget(m_speedWidget);
         }
     }
     else
     {
-        if (!m_speedWidget || !qobject_cast<QLabel *>(m_speedWidget))
+        if (!qobject_cast<QLabel *>(m_speedWidget))
         {
-            m_ui->speedLayout->removeWidget(m_speedWidget);
-            delete m_speedWidget;
-            auto *label = new QLabel(tr("<center><b>Speed graphs are disabled</b><p>You may change this setting in Advanced Options </center>"), this);
+            if (m_speedWidget)
+            {
+                m_ui->speedLayout->removeWidget(m_speedWidget);
+                delete m_speedWidget;
+            }
+
+            const auto displayText = QString::fromLatin1("<center><b>%1</b><p>%2</p></center>")
+                .arg(tr("Speed graphs are disabled"), tr("You can enable it in Advanced Options"));
+            auto *label = new QLabel(displayText, this);
             label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
             m_speedWidget = label;
             m_ui->speedLayout->addWidget(m_speedWidget);

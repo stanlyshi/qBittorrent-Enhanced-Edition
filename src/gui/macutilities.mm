@@ -68,14 +68,14 @@ namespace MacUtils
 
         if (class_getInstanceMethod(delClass, shouldHandle))
         {
-            if (class_replaceMethod(delClass, shouldHandle, (IMP)dockClickHandler, "B@:"))
+            if (class_replaceMethod(delClass, shouldHandle, reinterpret_cast<IMP>(dockClickHandler), "B@:"))
                 qDebug("Registered dock click handler (replaced original method)");
             else
                 qWarning("Failed to replace method for dock click handler");
         }
         else
         {
-            if (class_addMethod(delClass, shouldHandle, (IMP)dockClickHandler, "B@:"))
+            if (class_addMethod(delClass, shouldHandle, reinterpret_cast<IMP>(dockClickHandler), "B@:"))
                 qDebug("Registered dock click handler");
             else
                 qWarning("Failed to register dock click handler");
@@ -104,7 +104,15 @@ namespace MacUtils
             for (const auto &path : pathsList)
                 [pathURLs addObject:[NSURL fileURLWithPath:path.toNSString()]];
 
-            [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:pathURLs];
+            // In some unknown way, the next line affects Qt's main loop causing the crash
+            // in QApplication::exec() on processing next event after this call.
+            // Even crash doesn't happen exactly after this call, it will happen on
+            // application exit. Call stack and disassembly are the same in all cases.
+            // But running it in another thread (aka in background) solves the issue.
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^
+            {
+                [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:pathURLs];
+            });
         }
     }
 

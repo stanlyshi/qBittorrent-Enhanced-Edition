@@ -38,14 +38,14 @@ namespace BitTorrent
 class FileSearcher final : public QObject
 {
     Q_OBJECT
-    Q_DISABLE_COPY(FileSearcher)
+    Q_DISABLE_COPY_MOVE(FileSearcher)
 
 public:
     FileSearcher() = default;
 
 public slots:
     void search(const BitTorrent::TorrentID &id, const QStringList &originalFileNames
-                , const QString &completeSavePath, const QString &incompleteSavePath);
+                , const QString &savePath, const QString &downloadPath);
 
 signals:
     void searchFinished(const BitTorrent::TorrentID &id, const QString &savePath, const QStringList &fileNames);
